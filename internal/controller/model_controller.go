@@ -35,12 +35,11 @@ import (
 	"k8s.io/apimachinery/pkg/apis/meta/v1/unstructured"
 	"k8s.io/apimachinery/pkg/runtime"
 	"k8s.io/apimachinery/pkg/util/intstr"
-	"k8s.io/utils/ptr"
-
 	applyappsv1 "k8s.io/client-go/applyconfigurations/apps/v1"
 	applycorev1 "k8s.io/client-go/applyconfigurations/core/v1"
 	applymetav1 "k8s.io/client-go/applyconfigurations/meta/v1"
 	"k8s.io/client-go/tools/record"
+	"k8s.io/utils/ptr"
 	ctrl "sigs.k8s.io/controller-runtime"
 	"sigs.k8s.io/controller-runtime/pkg/client"
 	"sigs.k8s.io/controller-runtime/pkg/reconcile"
@@ -52,19 +51,19 @@ const DefaultOllamaPort = 11434
 
 type ModelReconciler struct {
 	client client.Client
-	//resourceManager *ssa.ResourceManager
+	// resourceManager *ssa.ResourceManager
 	recorder       record.EventRecorder
 	baseHTTPClient *http.Client
 	fieldManager   string
 }
 
-func NewModelReconciler(client client.Client, recorder record.EventRecorder) *ModelReconciler {
+func NewModelReconciler(cli client.Client, recorder record.EventRecorder) *ModelReconciler {
 	return &ModelReconciler{
-		client: client,
-		//resourceManager: ssa.NewResourceManager(client, nil, ssa.Owner{
+		client: cli,
+		// resourceManager: ssa.NewResourceManager(client, nil, ssa.Owner{
 		//	Field: "ollama-operator",
 		//	Group: "ollama.aerf.io",
-		//}),
+		// }),
 		recorder:       recorder,
 		baseHTTPClient: cleanhttp.DefaultPooledClient(),
 	}
@@ -97,8 +96,7 @@ func (r *ModelReconciler) Reconcile(ctx context.Context, model *ollamav1alpha1.M
 	}
 
 	for i := range resources {
-		resource := resources[i]
-		if err := r.setControllerReference(model, resource); err != nil {
+		if err := r.setControllerReference(model, resources[i]); err != nil {
 			return ctrl.Result{}, err
 		}
 	}
@@ -140,6 +138,7 @@ func (r *ModelReconciler) SetupWithManager(mgr ctrl.Manager) error {
 func (r *ModelReconciler) setControllerReference(model *ollamav1alpha1.Model, controlled metav1.Object) error {
 	return ctrl.SetControllerReference(model, controlled, r.client.Scheme())
 }
+
 func toUnstructured(obj any) (*unstructured.Unstructured, error) {
 	unstr := &unstructured.Unstructured{}
 	var err error
