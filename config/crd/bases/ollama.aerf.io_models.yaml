@@ -43,6 +43,10 @@ spec:
                 description: Foo is an example field of Model. Edit model_types.go
                   to remove/update
                 type: string
+              ollamaImage:
+                default: ollama/ollama:0.3.0
+                description: https://hub.docker.com/r/ollama/ollama/tags
+                type: string
             required:
             - model
             type: object

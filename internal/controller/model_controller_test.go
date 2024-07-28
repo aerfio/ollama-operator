@@ -22,6 +22,7 @@ import (
 	"k8s.io/apimachinery/pkg/api/errors"
 	metav1 "k8s.io/apimachinery/pkg/apis/meta/v1"
 	"k8s.io/apimachinery/pkg/types"
+	"k8s.io/client-go/tools/record"
 
 	ollamav1alpha1 "aerf.io/ollama-operator/api/v1alpha1"
 
@@ -68,7 +69,7 @@ var _ = Describe("Model Controller", func() {
 		It("should successfully reconcile the resource", func() {
 			By("Reconciling the created resource")
 
-			controllerReconciler := NewModelReconciler(k8sClient)
+			controllerReconciler := NewModelReconciler(k8sClient, record.NewFakeRecorder(100))
 
 			_, err := controllerReconciler.Reconcile(ctx, nil)
 			Expect(err).NotTo(HaveOccurred())

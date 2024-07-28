@@ -143,7 +143,7 @@ func main() {
 		os.Exit(1)
 	}
 
-	if err = controller.NewModelReconciler(mgr.GetClient()).SetupWithManager(mgr); err != nil {
+	if err = controller.NewModelReconciler(mgr.GetClient(), mgr.GetEventRecorderFor("model-controller")).SetupWithManager(mgr); err != nil {
 		setupLog.Error(err, "unable to create controller", "controller", "Model")
 		os.Exit(1)
 	}

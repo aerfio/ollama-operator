@@ -22,7 +22,9 @@ import (
 
 // ModelSpec defines the desired state of Model
 type ModelSpec struct {
-
+	// https://hub.docker.com/r/ollama/ollama/tags
+	// +kubebuilder:default:="ollama/ollama:0.3.0"
+	OllamaImage string `json:"ollamaImage,omitempty"`
 	// Foo is an example field of Model. Edit model_types.go to remove/update
 	Model string `json:"model"`
 }
