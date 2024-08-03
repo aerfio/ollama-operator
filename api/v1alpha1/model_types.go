@@ -17,26 +17,48 @@ limitations under the License.
 package v1alpha1
 
 import (
+	xpv1 "github.com/crossplane/crossplane-runtime/apis/common/v1"
+	corev1 "k8s.io/api/core/v1"
 	metav1 "k8s.io/apimachinery/pkg/apis/meta/v1"
 )
 
 // ModelSpec defines the desired state of Model
 type ModelSpec struct {
 	// https://hub.docker.com/r/ollama/ollama/tags
-	// +kubebuilder:default:="ollama/ollama:0.3.0"
 	OllamaImage string `json:"ollamaImage,omitempty"`
-	// Foo is an example field of Model. Edit model_types.go to remove/update
-	Model string `json:"model"`
+
+	// Model like phi3, llama3.1 etc
+	Model     string                      `json:"model"`
+	Resources corev1.ResourceRequirements `json:"resources,omitempty"`
 }
 
 // ModelStatus defines the observed state of Model
 type ModelStatus struct {
-	// INSERT ADDITIONAL STATUS FIELD - define observed state of cluster
-	// Important: Run "make" to regenerate code after modifying this file
+	xpv1.ResourceStatus `json:",inline"`
+	OllamaImage         string              `json:"ollamaImage,omitempty"`
+	OllamaModelDetails  *OllamaModelDetails `json:"modelDetails,omitempty"`
+	ObservedGeneration  int64               `json:"observedGeneration,omitempty"`
 }
+
+type OllamaModelDetails struct {
+	ParameterSize     string   `json:"parameterSize,omitempty"`
+	QuantizationLevel string   `json:"quantizationLevel,omitempty"`
+	ParentModel       string   `json:"parentModel,omitempty"`
+	Format            string   `json:"format,omitempty"`
+	Family            string   `json:"family,omitempty"`
+	Families          []string `json:"families,omitempty"`
+}
+
+//var _ resource.Conditioned = &Model{}
 
 // +kubebuilder:object:root=true
 // +kubebuilder:subresource:status
+// +kubebuilder:printcolumn:name="MODEL",type="string",JSONPath=".spec.model"
+// +kubebuilder:printcolumn:name="SYNCED",type="string",JSONPath=".status.conditions[?(@.type=='Synced')].status"
+// +kubebuilder:printcolumn:name="READY",type="string",JSONPath=".status.conditions[?(@.type=='Ready')].status"
+// +kubebuilder:printcolumn:name="PARAMETER_SIZE",type="string",JSONPath=".status.modelDetails.parameterSize"
+// +kubebuilder:printcolumn:name="AGE",type="date",JSONPath=".metadata.creationTimestamp"
+// +kubebuilder:resource:scope=Namespaced,categories={ollama}
 
 // Model is the Schema for the models API
 type Model struct {
@@ -45,6 +67,22 @@ type Model struct {
 
 	Spec   ModelSpec   `json:"spec,omitempty"`
 	Status ModelStatus `json:"status,omitempty"`
+}
+
+func (in *Model) SetConditionsWithObservedGeneration(c ...xpv1.Condition) {
+	for i := range c {
+		c[i].ObservedGeneration = in.Generation
+	}
+
+	in.Status.SetConditions(c...)
+}
+
+//func (in *Model) SetConditions(c ...xpv1.Condition) {
+//	in.Status.SetConditions(c...)
+//}
+
+func (in *Model) GetCondition(ct xpv1.ConditionType) xpv1.Condition {
+	return in.Status.GetCondition(ct)
 }
 
 // +kubebuilder:object:root=true

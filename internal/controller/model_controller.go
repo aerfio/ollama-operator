@@ -17,6 +17,7 @@ limitations under the License.
 package controller
 
 import (
+	"cmp"
 	"context"
 	"fmt"
 	"net"
@@ -24,12 +25,16 @@ import (
 	"net/url"
 	"slices"
 	"strconv"
+	"strings"
 	"time"
 
+	xpv1 "github.com/crossplane/crossplane-runtime/apis/common/v1"
+	"github.com/crossplane/crossplane-runtime/pkg/errors"
 	"github.com/hashicorp/go-cleanhttp"
 	ollamaapi "github.com/ollama/ollama/api"
 	appsv1 "k8s.io/api/apps/v1"
 	corev1 "k8s.io/api/core/v1"
+	apierrors "k8s.io/apimachinery/pkg/api/errors"
 	"k8s.io/apimachinery/pkg/api/resource"
 	metav1 "k8s.io/apimachinery/pkg/apis/meta/v1"
 	"k8s.io/apimachinery/pkg/apis/meta/v1/unstructured"
@@ -39,15 +44,18 @@ import (
 	applycorev1 "k8s.io/client-go/applyconfigurations/core/v1"
 	applymetav1 "k8s.io/client-go/applyconfigurations/meta/v1"
 	"k8s.io/client-go/tools/record"
+	"k8s.io/kubectl/pkg/polymorphichelpers"
 	"k8s.io/utils/ptr"
 	ctrl "sigs.k8s.io/controller-runtime"
 	"sigs.k8s.io/controller-runtime/pkg/client"
 	"sigs.k8s.io/controller-runtime/pkg/reconcile"
 
 	ollamav1alpha1 "aerf.io/ollama-operator/api/v1alpha1"
+	"aerf.io/ollama-operator/internal/eventrecorder"
 )
 
 const DefaultOllamaPort = 11434
+const DefaultOllamaContainerImage = "ollama/ollama:0.3.3"
 
 type ModelReconciler struct {
 	client client.Client
@@ -59,13 +67,10 @@ type ModelReconciler struct {
 
 func NewModelReconciler(cli client.Client, recorder record.EventRecorder) *ModelReconciler {
 	return &ModelReconciler{
-		client: cli,
-		// resourceManager: ssa.NewResourceManager(client, nil, ssa.Owner{
-		//	Field: "ollama-operator",
-		//	Group: "ollama.aerf.io",
-		// }),
+		client:         cli,
 		recorder:       recorder,
 		baseHTTPClient: cleanhttp.DefaultPooledClient(),
+		fieldManager:   "model-controller",
 	}
 }
 
@@ -84,9 +89,29 @@ func (r *ModelReconciler) apply(ctx context.Context, obj *unstructured.Unstructu
 	)
 }
 
-func (r *ModelReconciler) Reconcile(ctx context.Context, model *ollamav1alpha1.Model) (ctrl.Result, error) {
+func (r *ModelReconciler) eventRecorderFor(obj runtime.Object) *eventrecorder.EventRecorder {
+	return eventrecorder.New(r.recorder, obj)
+}
+
+func (r *ModelReconciler) Reconcile(ctx context.Context, model *ollamav1alpha1.Model) (result ctrl.Result, retErr error) {
+	defer func() {
+		model.Status.ObservedGeneration = model.GetGeneration()
+		model.Status.OllamaImage = cmp.Or(model.Spec.OllamaImage, DefaultOllamaContainerImage)
+		if retErr != nil {
+			model.SetConditionsWithObservedGeneration(xpv1.ReconcileError(retErr))
+		} else {
+			model.SetConditionsWithObservedGeneration(xpv1.ReconcileSuccess())
+		}
+
+		patchErr := r.client.Status().Update(ctx, model)
+		if patchErr != nil {
+			retErr = errors.Join(retErr, patchErr)
+		}
+	}()
+
 	log := ctrl.LoggerFrom(ctx)
 	log.V(1).Info("Reconciling Model", "object", model)
+	recorder := r.eventRecorderFor(model)
 
 	ollamaCli := r.ollamaClientForModel(model)
 
@@ -108,22 +133,94 @@ func (r *ModelReconciler) Reconcile(ctx context.Context, model *ollamav1alpha1.M
 		}
 	}
 
-	pullResp := ollamaapi.ProgressResponse{}
-	if err := ollamaCli.Pull(ctx, &ollamaapi.PullRequest{
-		Model:  model.Spec.Model,
-		Stream: ptr.To(false),
-	}, func(resp ollamaapi.ProgressResponse) error {
-		pullResp = resp
-		return nil
-	}); err != nil {
-		return ctrl.Result{}, err
-	}
-	log.V(1).Info("pulling model", "response", pullResp)
-	if pullResp.Status != "success" {
-		return ctrl.Result{RequeueAfter: 5 * time.Second}, nil
+	sts := &appsv1.StatefulSet{}
+	if err := r.client.Get(ctx, client.ObjectKey{
+		Namespace: model.GetNamespace(),
+		Name:      model.GetName(),
+	}, sts); err != nil {
+		if apierrors.IsNotFound(err) {
+			model.SetConditionsWithObservedGeneration(xpv1.Creating())
+			return ctrl.Result{RequeueAfter: 3 * time.Second}, nil
+		}
+		return ctrl.Result{}, errors.Wrap(err, "failed to fetch statefulset to check its readiness")
 	}
 
+	readyMsg, ready, err := isStatefulSetReady(sts)
+	if err != nil {
+		model.SetConditionsWithObservedGeneration(xpv1.Unavailable())
+		return ctrl.Result{}, err
+	}
+	if !ready {
+		model.SetConditionsWithObservedGeneration(xpv1.Unavailable().WithMessage(readyMsg))
+		return ctrl.Result{}, nil
+	}
+
+	modelList, err := ollamaCli.List(ctx)
+	if err != nil {
+		return ctrl.Result{}, errors.Wrap(err, "failed to list local models")
+	}
+
+	if !slices.ContainsFunc(modelList.Models, func(resp ollamaapi.ListModelResponse) bool { return resp.Model == model.Spec.Model }) {
+		// model has NOT been pulled in yet
+		pullingModelCondition := xpv1.Creating().WithMessage(fmt.Sprintf("Pulling %q model", model.Spec.Model))
+		cond := model.GetCondition(xpv1.TypeReady)
+		if !cond.Equal(pullingModelCondition) {
+			// pulling takes a while and we want to inform the user that it's happening
+			model.SetConditionsWithObservedGeneration(pullingModelCondition)
+			return ctrl.Result{Requeue: true}, nil
+		}
+
+		log.V(1).Info("started pulling ollama model")
+		recorder.NormalEventf("PullingModel", "Pulling %q model", model.Spec.Model)
+		pullResp := ollamaapi.ProgressResponse{}
+		if err := ollamaCli.Pull(ctx, &ollamaapi.PullRequest{
+			Model:  model.Spec.Model,
+			Stream: ptr.To(false),
+		}, func(resp ollamaapi.ProgressResponse) error {
+			pullResp = resp
+			//log.V(1).Info("streaming pull response", "resp", resp)
+			return nil
+		}); err != nil {
+			recorder.WarningEventf("PullingModel", "failed to pull %q model", model.Spec.Model)
+			return ctrl.Result{}, errors.Wrapf(err, "failed to pull %q model", model.Spec.Model)
+		}
+		log.V(1).Info("pulled model", "response", pullResp)
+		if pullResp.Status != "success" {
+			model.SetConditionsWithObservedGeneration(xpv1.Unavailable().WithMessage("Model hasn't been pulled successfully, retrying"))
+			return ctrl.Result{RequeueAfter: 5 * time.Second}, nil
+		}
+	}
+
+	modelDetails, err := ollamaCli.Show(ctx, &ollamaapi.ShowRequest{Model: model.Spec.Model})
+	if err != nil {
+		model.SetConditionsWithObservedGeneration(xpv1.Unavailable())
+		return ctrl.Result{}, errors.Wrap(err, "while fetching ollama model details")
+	}
+	model.Status.OllamaModelDetails = &ollamav1alpha1.OllamaModelDetails{
+		ParameterSize:     modelDetails.Details.ParameterSize,
+		QuantizationLevel: modelDetails.Details.QuantizationLevel,
+		ParentModel:       modelDetails.Details.ParentModel,
+		Format:            modelDetails.Details.Format,
+		Family:            modelDetails.Details.Family,
+		Families:          modelDetails.Details.Families,
+	}
+
+	model.SetConditionsWithObservedGeneration(xpv1.Available())
 	return ctrl.Result{}, nil
+}
+
+func isStatefulSetReady(sts *appsv1.StatefulSet) (string, bool, error) {
+	content, err := runtime.DefaultUnstructuredConverter.ToUnstructured(sts)
+	if err != nil {
+		return "", false, err
+	}
+	// TODO consider not using kubectl codebase
+	viewer := polymorphichelpers.StatefulSetStatusViewer{}
+	msg, ready, err := viewer.Status(&unstructured.Unstructured{Object: content}, 0)
+	if err != nil {
+		return "", false, err
+	}
+	return strings.TrimSuffix(msg, "...\n"), ready, nil
 }
 
 // SetupWithManager sets up the controller with the Manager.
@@ -132,7 +229,11 @@ func (r *ModelReconciler) SetupWithManager(mgr ctrl.Manager) error {
 		For(&ollamav1alpha1.Model{}).
 		Owns(&appsv1.StatefulSet{}).
 		Owns(&corev1.Service{}).
-		Complete(reconcile.AsReconciler[*ollamav1alpha1.Model](mgr.GetClient(), r))
+		Complete(
+			errors.WithSilentRequeueOnConflict(
+				reconcile.AsReconciler[*ollamav1alpha1.Model](mgr.GetClient(), r),
+			),
+		)
 }
 
 func (r *ModelReconciler) setControllerReference(model *ollamav1alpha1.Model, controlled metav1.Object) error {
@@ -184,8 +285,14 @@ func (r *ModelReconciler) resources(model *ollamav1alpha1.Model) ([]*unstructure
 						WithContainers(
 							applycorev1.Container().
 								WithName("ollama").
-								WithImage(model.Spec.OllamaImage).
+								WithImage(cmp.Or(model.Spec.OllamaImage, DefaultOllamaContainerImage)).
 								WithImagePullPolicy(corev1.PullIfNotPresent).
+								WithResources(
+									applycorev1.ResourceRequirements().
+										WithRequests(model.Spec.Resources.Requests).
+										WithLimits(model.Spec.Resources.Limits),
+									//WithClaims(model.Spec.Resources.Claims),
+								).
 								WithPorts(
 									applycorev1.ContainerPort().
 										WithName(httpAPIPortName).
@@ -218,6 +325,11 @@ func (r *ModelReconciler) resources(model *ollamav1alpha1.Model) ([]*unstructure
 											WithPort(intstr.FromInt32(DefaultOllamaPort)).
 											WithPath("/"),
 									),
+								).
+								WithVolumeMounts(
+									applycorev1.VolumeMount().
+										WithName(model.GetName() + "-ollama-root").
+										WithMountPath("/root/.ollama"),
 								),
 						),
 					),
