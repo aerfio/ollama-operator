@@ -54,12 +54,8 @@ import (
 	"aerf.io/ollama-operator/internal/eventrecorder"
 )
 
-const DefaultOllamaPort = 11434
-const DefaultOllamaContainerImage = "ollama/ollama:0.3.3"
-
 type ModelReconciler struct {
-	client client.Client
-	// resourceManager *ssa.ResourceManager
+	client         client.Client
 	recorder       record.EventRecorder
 	baseHTTPClient *http.Client
 	fieldManager   string
@@ -238,16 +234,6 @@ func (r *ModelReconciler) SetupWithManager(mgr ctrl.Manager) error {
 
 func (r *ModelReconciler) setControllerReference(model *ollamav1alpha1.Model, controlled metav1.Object) error {
 	return ctrl.SetControllerReference(model, controlled, r.client.Scheme())
-}
-
-func toUnstructured(obj any) (*unstructured.Unstructured, error) {
-	unstr := &unstructured.Unstructured{}
-	var err error
-	unstr.Object, err = runtime.DefaultUnstructuredConverter.ToUnstructured(obj)
-	if err != nil {
-		return nil, err
-	}
-	return unstr, nil
 }
 
 func (r *ModelReconciler) resources(model *ollamav1alpha1.Model) ([]*unstructured.Unstructured, error) {

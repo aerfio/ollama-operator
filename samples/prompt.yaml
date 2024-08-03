@@ -1,0 +1,11 @@
+apiVersion: ollama.aerf.io/v1alpha1
+kind: Prompt
+metadata:
+  name: test
+  namespace: default
+spec:
+  modelRef:
+    namespace: default
+    name: gemma2-2b
+  prompt: |
+    Tell me about yourself in 3 sentences max

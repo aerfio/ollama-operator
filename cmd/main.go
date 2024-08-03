@@ -147,7 +147,10 @@ func main() {
 		setupLog.Error(err, "unable to create controller", "controller", "Model")
 		os.Exit(1)
 	}
-	// +kubebuilder:scaffold:builder
+	if err = controller.NewPromptReconciler(mgr.GetClient(), mgr.GetEventRecorderFor("prompt-controller")).SetupWithManager(mgr); err != nil {
+		setupLog.Error(err, "unable to create controller", "controller", "Prompt")
+		os.Exit(1)
+	}
 
 	if err := mgr.AddHealthzCheck("healthz", healthz.Ping); err != nil {
 		setupLog.Error(err, "unable to set up health check")
