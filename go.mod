@@ -5,6 +5,7 @@ go 1.22.5
 require (
 	github.com/crossplane/crossplane-runtime v1.17.0-rc.0.0.20240722174932-1e7193e9c065
 	github.com/hashicorp/go-cleanhttp v0.5.2
+	github.com/klauspost/compress v1.17.9
 	github.com/ollama/ollama v0.3.0
 	k8s.io/api v0.30.3
 	k8s.io/apimachinery v0.30.3
@@ -74,7 +75,6 @@ require (
 	github.com/prometheus/common v0.48.0 // indirect
 	github.com/prometheus/procfs v0.12.0 // indirect
 	github.com/russross/blackfriday/v2 v2.1.0 // indirect
-	github.com/spf13/afero v1.11.0 // indirect
 	github.com/spf13/cobra v1.8.0 // indirect
 	github.com/spf13/pflag v1.0.5 // indirect
 	github.com/stoewer/go-strcase v1.2.0 // indirect

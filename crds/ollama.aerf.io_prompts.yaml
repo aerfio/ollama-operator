@@ -18,10 +18,10 @@ spec:
   versions:
   - additionalPrinterColumns:
     - jsonPath: .spec.modelRef.name
-      name: MODEL_NAME
+      name: MODEL_REF_NAME
       type: string
     - jsonPath: .spec.modelRef.name
-      name: MODEL_NAMESPACE
+      name: MODEL_REF_NAMESPACE
       type: string
     - jsonPath: .status.conditions[?(@.type=='Synced')].status
       name: SYNCED
@@ -57,6 +57,21 @@ spec:
           spec:
             description: PromptSpec defines the desired state of Prompt
             properties:
+              images:
+                items:
+                  properties:
+                    data:
+                      type: string
+                    format:
+                      enum:
+                      - gzip
+                      - zstd
+                      - none
+                      type: string
+                  required:
+                  - data
+                  type: object
+                type: array
               modelRef:
                 properties:
                   name:
@@ -152,12 +167,16 @@ spec:
                     type: integer
                   evalDuration:
                     type: string
+                  evalRate:
+                    type: string
                   loadDuration:
                     type: string
                   promptEvalCount:
                     format: int64
                     type: integer
                   promptEvalDuration:
+                    type: string
+                  promptEvalRate:
                     type: string
                   totalDuration:
                     type: string
