@@ -18,10 +18,10 @@ spec:
   versions:
   - additionalPrinterColumns:
     - jsonPath: .spec.modelRef.name
-      name: MODEL_NAME
+      name: MODEL_REF_NAME
       type: string
     - jsonPath: .spec.modelRef.name
-      name: MODEL_NAMESPACE
+      name: MODEL_REF_NAMESPACE
       type: string
     - jsonPath: .status.conditions[?(@.type=='Synced')].status
       name: SYNCED
@@ -57,15 +57,69 @@ spec:
           spec:
             description: PromptSpec defines the desired state of Prompt
             properties:
+              images:
+                items:
+                  description: TODO cel expression that only 1 field should be set
+                  properties:
+                    configMapKeyRef:
+                      description: A ConfigMapKeySelector is a reference to a configmap
+                        key in an arbitrary namespace.
+                      properties:
+                        key:
+                          description: The key to select.
+                          type: string
+                        name:
+                          description: Name of the configmap.
+                          type: string
+                        namespace:
+                          description: Namespace of the configmap.
+                          type: string
+                      required:
+                      - key
+                      - name
+                      type: object
+                    inline:
+                      properties:
+                        data:
+                          type: string
+                        format:
+                          enum:
+                          - gzip
+                          - zstd
+                          - none
+                          type: string
+                      required:
+                      - data
+                      type: object
+                    secretKeyRef:
+                      description: A SecretKeySelector is a reference to a secret
+                        key in an arbitrary namespace.
+                      properties:
+                        key:
+                          description: The key to select.
+                          type: string
+                        name:
+                          description: Name of the secret.
+                          type: string
+                        namespace:
+                          description: Namespace of the secret.
+                          type: string
+                      required:
+                      - key
+                      - name
+                      - namespace
+                      type: object
+                  type: object
+                type: array
               modelRef:
                 properties:
                   name:
                     type: string
                   namespace:
+                    description: defaults to prompt namespace
                     type: string
                 required:
                 - name
-                - namespace
                 type: object
               options:
                 type: object
@@ -152,12 +206,16 @@ spec:
                     type: integer
                   evalDuration:
                     type: string
+                  evalRate:
+                    type: string
                   loadDuration:
                     type: string
                   promptEvalCount:
                     format: int64
                     type: integer
                   promptEvalDuration:
+                    type: string
+                  promptEvalRate:
                     type: string
                   totalDuration:
                     type: string

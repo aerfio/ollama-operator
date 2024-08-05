@@ -49,7 +49,7 @@ type OllamaModelDetails struct {
 	Families          []string `json:"families,omitempty"`
 }
 
-//var _ resource.Conditioned = &Model{}
+// var _ resource.Conditioned = &Model{}
 
 // +kubebuilder:object:root=true
 // +kubebuilder:subresource:status

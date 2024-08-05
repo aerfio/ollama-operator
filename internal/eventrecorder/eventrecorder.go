@@ -25,6 +25,7 @@ func (e *EventRecorder) NormalEvent(reason, message string) {
 func (e *EventRecorder) NormalEventf(reason, format string, args ...any) {
 	e.recorder.Eventf(e.obj, corev1.EventTypeNormal, reason, format, args...)
 }
+
 func (e *EventRecorder) WarningEvent(reason, message string) {
 	e.recorder.Event(e.obj, corev1.EventTypeWarning, reason, message)
 }
