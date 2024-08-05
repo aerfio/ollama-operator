@@ -50,7 +50,7 @@ import (
 	"sigs.k8s.io/controller-runtime/pkg/client"
 	"sigs.k8s.io/controller-runtime/pkg/reconcile"
 
-	ollamav1alpha1 "aerf.io/ollama-operator/api/v1alpha1"
+	ollamav1alpha1 "aerf.io/ollama-operator/api/ollama/v1alpha1"
 	"aerf.io/ollama-operator/internal/eventrecorder"
 )
 

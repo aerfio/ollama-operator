@@ -20,6 +20,8 @@ import (
 	xpv1 "github.com/crossplane/crossplane-runtime/apis/common/v1"
 	metav1 "k8s.io/apimachinery/pkg/apis/meta/v1"
 	"k8s.io/apimachinery/pkg/runtime"
+
+	cmnv1alpha1 "aerf.io/ollama-operator/api/common/v1alpha1"
 )
 
 // PromptSpec defines the desired state of Prompt
@@ -39,7 +41,14 @@ type PromptSpec struct {
 	Options runtime.RawExtension `json:"options,omitempty"`
 	// todo ImageRefs
 
-	Images []ImageData `json:"images,omitempty"`
+	Images []ImageSource `json:"images,omitempty"`
+}
+
+// TODO cel expression that only 1 field should be set
+type ImageSource struct {
+	Inline          *ImageData                        `json:"inline,omitempty"`
+	SecretKeyRef    *xpv1.SecretKeySelector           `json:"secretKeyRef,omitempty"`
+	ConfigMapKeyRef *cmnv1alpha1.ConfigMapKeySelector `json:"configMapKeyRef,omitempty"`
 }
 
 // +kubebuilder:validation:Enum=gzip;zstd;none
@@ -59,8 +68,9 @@ type ImageData struct {
 }
 
 type ModelRef struct {
-	Name      string `json:"name"`
-	Namespace string `json:"namespace"`
+	Name string `json:"name"`
+	// defaults to prompt namespace
+	Namespace string `json:"namespace,omitempty"`
 }
 
 // PromptStatus defines the observed state of Model
