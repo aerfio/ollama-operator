@@ -35,7 +35,7 @@ import (
 	"sigs.k8s.io/controller-runtime/pkg/reconcile"
 	"sigs.k8s.io/yaml"
 
-	ollamav1alpha1 "aerf.io/ollama-operator/api/ollama/v1alpha1"
+	ollamav1alpha1 "aerf.io/ollama-operator/apis/ollama/v1alpha1"
 )
 
 type PromptReconciler struct {

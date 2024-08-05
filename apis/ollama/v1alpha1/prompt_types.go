@@ -21,7 +21,7 @@ import (
 	metav1 "k8s.io/apimachinery/pkg/apis/meta/v1"
 	"k8s.io/apimachinery/pkg/runtime"
 
-	cmnv1alpha1 "aerf.io/ollama-operator/api/common/v1alpha1"
+	cmnv1alpha1 "aerf.io/ollama-operator/apis/common/v1alpha1"
 )
 
 // PromptSpec defines the desired state of Prompt

@@ -5,8 +5,10 @@ import (
 	"k8s.io/apimachinery/pkg/runtime"
 )
 
-const DefaultOllamaPort = 11434
-const DefaultOllamaContainerImage = "ollama/ollama:0.3.3"
+const (
+	DefaultOllamaPort           = 11434
+	DefaultOllamaContainerImage = "ollama/ollama:0.3.3"
+)
 
 func toUnstructured(obj any) (*unstructured.Unstructured, error) {
 	unstr := &unstructured.Unstructured{}

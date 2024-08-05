@@ -21,8 +21,6 @@ import (
 	"flag"
 	"os"
 
-	corev1 "k8s.io/api/core/v1"
-	"k8s.io/apimachinery/pkg/labels"
 	"k8s.io/apimachinery/pkg/runtime"
 	utilruntime "k8s.io/apimachinery/pkg/util/runtime"
 	clientgoscheme "k8s.io/client-go/kubernetes/scheme"
@@ -35,7 +33,7 @@ import (
 	metricsserver "sigs.k8s.io/controller-runtime/pkg/metrics/server"
 	"sigs.k8s.io/controller-runtime/pkg/webhook"
 
-	ollamav1alpha1 "aerf.io/ollama-operator/api/ollama/v1alpha1"
+	ollamav1alpha1 "aerf.io/ollama-operator/apis/ollama/v1alpha1"
 
 	"aerf.io/ollama-operator/internal/controller"
 
@@ -123,9 +121,9 @@ func main() {
 		metricsServerOptions.FilterProvider = filters.WithAuthenticationAndAuthorization
 	}
 
-	dct := cachedebug.NewDebugCacheTransformer("0.0.0.0:12345")
+	dct := cachedebug.NewDebugCacheTransformer("0.0.0.0:12345", scheme)
 
-	containsImageSelector := labels.SelectorFromSet(map[string]string{"ollama.aerf.io/contains-image": "true"})
+	// containsImageSelector := labels.SelectorFromSet(map[string]string{"ollama.aerf.io/contains-image": "true"})
 	mgr, err := ctrl.NewManager(ctrl.GetConfigOrDie(), ctrl.Options{
 		Scheme:                 scheme,
 		Metrics:                metricsServerOptions,
@@ -143,12 +141,17 @@ func main() {
 		// the manager stops, so would be fine to enable this option. However,
 		// if you are doing or is intended to do any operation such as perform cleanups
 		// after the manager stops then its usage might be unsafe.
+		Client: client.Options{
+			Cache: &client.CacheOptions{
+				Unstructured: true,
+			},
+		},
 		LeaderElectionReleaseOnCancel: true,
 		Cache: cache.Options{
-			ByObject: map[client.Object]cache.ByObject{
-				&corev1.ConfigMap{}: {Label: containsImageSelector},
-				&corev1.Secret{}:    {Label: containsImageSelector},
-			},
+			// ByObject: map[client.Object]cache.ByObject{
+			// 	&corev1.ConfigMap{}: {Label: containsImageSelector},
+			// 	&corev1.Secret{}:    {Label: containsImageSelector},
+			// },
 			DefaultTransform: dct.TransformFn(),
 		},
 	})

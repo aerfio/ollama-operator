@@ -5,7 +5,7 @@
 package v1alpha1
 
 import (
-	commonv1alpha1 "aerf.io/ollama-operator/api/common/v1alpha1"
+	commonv1alpha1 "aerf.io/ollama-operator/apis/common/v1alpha1"
 	"github.com/crossplane/crossplane-runtime/apis/common/v1"
 	"k8s.io/apimachinery/pkg/runtime"
 )
