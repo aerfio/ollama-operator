@@ -36,7 +36,8 @@ import (
 	"sigs.k8s.io/controller-runtime/pkg/webhook"
 
 	ollamav1alpha1 "aerf.io/ollama-operator/apis/ollama/v1alpha1"
-	"aerf.io/ollama-operator/internal/controller"
+	controller "aerf.io/ollama-operator/internal/controllers"
+
 	_ "k8s.io/client-go/plugin/pkg/client/auth"
 )
 

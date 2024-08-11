@@ -33,6 +33,7 @@ import (
 	"sigs.k8s.io/controller-runtime/pkg/handler"
 	"sigs.k8s.io/controller-runtime/pkg/predicate"
 	"sigs.k8s.io/controller-runtime/pkg/reconcile"
+	"sigs.k8s.io/controller-runtime/pkg/source"
 	"sigs.k8s.io/yaml"
 
 	ollamav1alpha1 "aerf.io/ollama-operator/apis/ollama/v1alpha1"
@@ -76,9 +77,8 @@ func (r *PromptReconciler) SetupWithManager(mgr ctrl.Manager) error {
 				),
 			),
 		).
-		Watches(&ollamav1alpha1.Model{}, handler.EnqueueRequestsFromMapFunc(func(ctx context.Context, obj client.Object) []ctrl.Request {
+		WatchesRawSource(source.Kind(mgr.GetCache(), &ollamav1alpha1.Model{}, handler.TypedEnqueueRequestsFromMapFunc[*ollamav1alpha1.Model](func(ctx context.Context, model *ollamav1alpha1.Model) []reconcile.Request {
 			log := mgr.GetLogger().WithValues("controller", "prompt-controller")
-			model := obj.(*ollamav1alpha1.Model)
 
 			promptList := &ollamav1alpha1.PromptList{}
 			if err := mgr.GetClient().List(ctx, promptList, client.InNamespace(model.GetNamespace())); err != nil {
@@ -98,7 +98,7 @@ func (r *PromptReconciler) SetupWithManager(mgr ctrl.Manager) error {
 				}
 			}
 			return ctrlRequests
-		})).
+		}))).
 		WithOptions(controller.Options{
 			MaxConcurrentReconciles: r.maxConcurrentReconciles,
 		}).
