@@ -39,18 +39,20 @@ import (
 )
 
 type PromptReconciler struct {
-	client         client.Client
-	recorder       record.EventRecorder
-	baseHTTPClient *http.Client
-	fieldManager   string
+	client                  client.Client
+	recorder                record.EventRecorder
+	baseHTTPClient          *http.Client
+	fieldManager            string
+	maxConcurrentReconciles int
 }
 
-func NewPromptReconciler(cli client.Client, recorder record.EventRecorder) *PromptReconciler {
+func NewPromptReconciler(cli client.Client, recorder record.EventRecorder, maxConcurrentReconciles int) *PromptReconciler {
 	return &PromptReconciler{
-		client:         cli,
-		recorder:       recorder,
-		baseHTTPClient: cleanhttp.DefaultPooledClient(),
-		fieldManager:   "prompt-controller",
+		client:                  cli,
+		recorder:                recorder,
+		baseHTTPClient:          cleanhttp.DefaultPooledClient(),
+		fieldManager:            "prompt-controller",
+		maxConcurrentReconciles: maxConcurrentReconciles,
 	}
 }
 
@@ -68,7 +70,7 @@ func (r *PromptReconciler) SetupWithManager(mgr ctrl.Manager) error {
 	return ctrl.NewControllerManagedBy(mgr).
 		For(&ollamav1alpha1.Prompt{},
 			builder.WithPredicates(
-				predicate.And[client.Object](
+				predicate.And(
 					predicate.GenerationChangedPredicate{},
 					predicate.ResourceVersionChangedPredicate{},
 				),
@@ -98,7 +100,7 @@ func (r *PromptReconciler) SetupWithManager(mgr ctrl.Manager) error {
 			return ctrlRequests
 		})).
 		WithOptions(controller.Options{
-			MaxConcurrentReconciles: 10, // todo put into opts
+			MaxConcurrentReconciles: r.maxConcurrentReconciles,
 		}).
 		Complete(
 			errors.WithSilentRequeueOnConflict(
@@ -198,11 +200,6 @@ func (r *PromptReconciler) Reconcile(ctx context.Context, prompt *ollamav1alpha1
 	if err != nil {
 		return reconcile.Result{}, fmt.Errorf("failed to generate prompt: %w", err)
 	}
-	//jsonResp, err := json.Marshal(generateResp)
-	//if err != nil {
-	//	return reconcile.Result{}, err
-	//}
-	// fmt.Fprintf(os.Stderr, "prompt eval rate:     %.2f tokens/s\n", float64(m.PromptEvalCount)/m.PromptEvalDuration.Seconds())
 
 	log.Info("generatedResponse", "resp", generateResp)
 	// todo handle done, doneReason

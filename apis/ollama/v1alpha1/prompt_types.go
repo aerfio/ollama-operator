@@ -39,7 +39,6 @@ type PromptSpec struct {
 	Template string `json:"template,omitempty"`
 	// +kubebuilder:pruning:PreserveUnknownFields
 	Options runtime.RawExtension `json:"options,omitempty"`
-	// todo ImageRefs
 
 	Images []ImageSource `json:"images,omitempty"`
 }

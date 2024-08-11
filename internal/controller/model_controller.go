@@ -151,14 +151,6 @@ func (r *ModelReconciler) Reconcile(ctx context.Context, model *ollamav1alpha1.M
 		return ctrl.Result{}, nil
 	}
 
-	pod := &unstructured.Unstructured{}
-	pod.SetGroupVersionKind(model.GroupVersionKind())
-	err = r.client.Get(ctx, client.ObjectKey{
-		Namespace: model.GetNamespace(),
-		Name:      model.GetName(),
-	}, pod)
-	log.Info("hejo")
-
 	modelList, err := ollamaCli.List(ctx)
 	if err != nil {
 		return ctrl.Result{}, errors.Wrap(err, "failed to list local models")
@@ -182,7 +174,6 @@ func (r *ModelReconciler) Reconcile(ctx context.Context, model *ollamav1alpha1.M
 			Stream: ptr.To(false),
 		}, func(resp ollamaapi.ProgressResponse) error {
 			pullResp = resp
-			// log.V(1).Info("streaming pull response", "resp", resp)
 			return nil
 		}); err != nil {
 			recorder.WarningEventf("PullingModel", "failed to pull %q model", model.Spec.Model)
@@ -285,7 +276,6 @@ func (r *ModelReconciler) resources(model *ollamav1alpha1.Model) ([]*unstructure
 									applycorev1.ResourceRequirements().
 										WithRequests(model.Spec.Resources.Requests).
 										WithLimits(model.Spec.Resources.Limits),
-									// WithClaims(model.Spec.Resources.Claims),
 								).
 								WithPorts(
 									applycorev1.ContainerPort().
