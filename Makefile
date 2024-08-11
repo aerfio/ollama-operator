@@ -38,7 +38,7 @@ generate-deep-copy: controller-gen ## Generate code containing DeepCopy, DeepCop
 	$(CONTROLLER_GEN) object paths="./..."
 
 .PHONY: test
-test: manifests generate-deep-copy fmt vet envtest ## Run tests.
+test: manifests generate-deep-copy envtest ## Run tests.
 	KUBEBUILDER_ASSETS="$(shell $(ENVTEST) use $(ENVTEST_K8S_VERSION) --bin-dir $(LOCALBIN) -p path)" go test $$(go list ./... | grep -v /e2e) -coverprofile cover.out -race
 
 .PHONY: lint
@@ -52,7 +52,7 @@ lint-fix: golangci-lint ## Run golangci-lint linter and perform fixes
 ##@ Build
 
 .PHONY: build
-build: manifests generate-deep-copy fmt vet ## Build manager binary.
+build: manifests generate-deep-copy ## Build manager binary.
 	go build -o bin/operator cmd/operator/main.go
 
 .PHONY: container-build
