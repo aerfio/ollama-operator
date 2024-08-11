@@ -4,6 +4,7 @@ go 1.22.5
 
 require (
 	aerf.io/k8sutils v0.0.0-20240805171723-4ba878ba35f7
+	dario.cat/mergo v1.0.0
 	github.com/crossplane/crossplane-runtime v1.17.0-rc.0.0.20240722174932-1e7193e9c065
 	github.com/hashicorp/go-cleanhttp v0.5.2
 	github.com/klauspost/compress v1.17.9
@@ -17,8 +18,9 @@ require (
 	sigs.k8s.io/yaml v1.4.0
 )
 
+require github.com/stretchr/testify v1.9.0 // indirect
+
 require (
-	dario.cat/mergo v1.0.0 // indirect
 	github.com/Azure/go-ansiterm v0.0.0-20210617225240-d185dfc1b5a1 // indirect
 	github.com/MakeNowJust/heredoc v1.0.0 // indirect
 	github.com/antlr/antlr4/runtime/Go/antlr/v4 v4.0.0-20230305170008-8188dc5388df // indirect
@@ -30,7 +32,7 @@ require (
 	github.com/davecgh/go-spew v1.1.2-0.20180830191138-d8f796af33cc // indirect
 	github.com/emicklei/go-restful/v3 v3.12.1 // indirect
 	github.com/evanphx/json-patch v5.9.0+incompatible // indirect
-	github.com/evanphx/json-patch/v5 v5.9.0 // indirect
+	github.com/evanphx/json-patch/v5 v5.9.0
 	github.com/exponent-io/jsonpath v0.0.0-20151013193312-d6023ce2651d // indirect
 	github.com/fatih/camelcase v1.0.0 // indirect
 	github.com/felixge/httpsnoop v1.0.4 // indirect

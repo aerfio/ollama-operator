@@ -10,7 +10,7 @@ const (
 	DefaultOllamaContainerImage = "ollama/ollama:0.3.3"
 )
 
-func toUnstructured(obj any) (*unstructured.Unstructured, error) {
+func ToUnstructured(obj any) (*unstructured.Unstructured, error) {
 	unstr := &unstructured.Unstructured{}
 	var err error
 	unstr.Object, err = runtime.DefaultUnstructuredConverter.ToUnstructured(obj)

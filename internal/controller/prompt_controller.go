@@ -63,8 +63,12 @@ func (r *PromptReconciler) ollamaClientForModel(model *ollamav1alpha1.Model) *ol
 	return ollamaapi.NewClient(u, r.baseHTTPClient)
 }
 
+type PromptControllerOpts struct {
+	CommonControllerOpts
+}
+
 // SetupWithManager sets up the controller with the Manager.
-func (r *PromptReconciler) SetupWithManager(mgr ctrl.Manager) error {
+func (r *PromptReconciler) SetupWithManager(mgr ctrl.Manager, opts PromptControllerOpts) error {
 	return ctrl.NewControllerManagedBy(mgr).
 		For(&ollamav1alpha1.Prompt{},
 			builder.WithPredicates(

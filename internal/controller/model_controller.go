@@ -30,12 +30,13 @@ import (
 
 	xpv1 "github.com/crossplane/crossplane-runtime/apis/common/v1"
 	"github.com/crossplane/crossplane-runtime/pkg/errors"
+	"github.com/crossplane/crossplane-runtime/pkg/resource"
 	"github.com/hashicorp/go-cleanhttp"
 	ollamaapi "github.com/ollama/ollama/api"
 	appsv1 "k8s.io/api/apps/v1"
 	corev1 "k8s.io/api/core/v1"
 	apierrors "k8s.io/apimachinery/pkg/api/errors"
-	"k8s.io/apimachinery/pkg/api/resource"
+	apimachineryresource "k8s.io/apimachinery/pkg/api/resource"
 	metav1 "k8s.io/apimachinery/pkg/apis/meta/v1"
 	"k8s.io/apimachinery/pkg/apis/meta/v1/unstructured"
 	"k8s.io/apimachinery/pkg/runtime"
@@ -59,6 +60,7 @@ type ModelReconciler struct {
 	recorder       record.EventRecorder
 	baseHTTPClient *http.Client
 	fieldManager   string
+	apiAplicator   resource.Applicator
 }
 
 func NewModelReconciler(cli client.Client, recorder record.EventRecorder) *ModelReconciler {
@@ -67,6 +69,7 @@ func NewModelReconciler(cli client.Client, recorder record.EventRecorder) *Model
 		recorder:       recorder,
 		baseHTTPClient: cleanhttp.DefaultPooledClient(),
 		fieldManager:   "model-controller",
+		apiAplicator:   resource.NewAPIPatchingApplicator(cli),
 	}
 }
 
@@ -79,11 +82,14 @@ func (r *ModelReconciler) ollamaClientForModel(model *ollamav1alpha1.Model) *oll
 	return ollamaapi.NewClient(u, r.baseHTTPClient)
 }
 
-func (r *ModelReconciler) apply(ctx context.Context, obj *unstructured.Unstructured, opts ...client.PatchOption) error {
-	return r.client.Patch(ctx, obj, client.Apply,
-		slices.Concat([]client.PatchOption{client.ForceOwnership, client.FieldOwner(r.fieldManager)}, opts)...,
-	)
-}
+//func (r *ModelReconciler) apply(ctx context.Context, obj *unstructured.Unstructured, opts ...client.PatchOption) error {
+//
+//
+//	resource2.APIPatchingApplicator{}
+//	return r.client.Patch(ctx, obj, client.Apply,
+//		slices.Concat([]client.PatchOption{client.ForceOwnership, client.FieldOwner(r.fieldManager)}, opts)...,
+//	)
+//}
 
 func (r *ModelReconciler) eventRecorderFor(obj runtime.Object) *eventrecorder.EventRecorder {
 	return eventrecorder.New(r.recorder, obj)
@@ -124,7 +130,7 @@ func (r *ModelReconciler) Reconcile(ctx context.Context, model *ollamav1alpha1.M
 
 	for _, res := range resources {
 		log.V(1).Info("Applying object", "object", res)
-		if err := r.apply(ctx, res); err != nil {
+		if err := r.apiAplicator.Apply(ctx, res); err != nil {
 			return ctrl.Result{}, err
 		}
 	}
@@ -150,14 +156,6 @@ func (r *ModelReconciler) Reconcile(ctx context.Context, model *ollamav1alpha1.M
 		model.SetConditionsWithObservedGeneration(xpv1.Unavailable().WithMessage(readyMsg))
 		return ctrl.Result{}, nil
 	}
-
-	pod := &unstructured.Unstructured{}
-	pod.SetGroupVersionKind(model.GroupVersionKind())
-	err = r.client.Get(ctx, client.ObjectKey{
-		Namespace: model.GetNamespace(),
-		Name:      model.GetName(),
-	}, pod)
-	log.Info("hejo")
 
 	modelList, err := ollamaCli.List(ctx)
 	if err != nil {
@@ -267,7 +265,7 @@ func (r *ModelReconciler) resources(model *ollamav1alpha1.Model) ([]*unstructure
 									applycorev1.VolumeResourceRequirements().
 										WithRequests(
 											corev1.ResourceList{
-												corev1.ResourceStorage: resource.MustParse("20Gi"), // TODO template this
+												corev1.ResourceStorage: apimachineryresource.MustParse("20Gi"),
 											},
 										),
 								),
@@ -281,12 +279,6 @@ func (r *ModelReconciler) resources(model *ollamav1alpha1.Model) ([]*unstructure
 								WithName("ollama").
 								WithImage(cmp.Or(model.Spec.OllamaImage, DefaultOllamaContainerImage)).
 								WithImagePullPolicy(corev1.PullIfNotPresent).
-								WithResources(
-									applycorev1.ResourceRequirements().
-										WithRequests(model.Spec.Resources.Requests).
-										WithLimits(model.Spec.Resources.Limits),
-									// WithClaims(model.Spec.Resources.Claims),
-								).
 								WithPorts(
 									applycorev1.ContainerPort().
 										WithName(httpAPIPortName).
@@ -345,11 +337,11 @@ func (r *ModelReconciler) resources(model *ollamav1alpha1.Model) ([]*unstructure
 				WithSelector(labels),
 		)
 
-	unstructuredSts, err := toUnstructured(sts)
+	unstructuredSts, err := ToUnstructured(sts)
 	if err != nil {
 		return nil, err
 	}
-	unstructuredSvc, err := toUnstructured(svc)
+	unstructuredSvc, err := ToUnstructured(svc)
 	if err != nil {
 		return nil, err
 	}
