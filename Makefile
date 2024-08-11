@@ -1,6 +1,6 @@
 # ENVTEST_K8S_VERSION refers to the version of kubebuilder assets to be downloaded by envtest binary.
 ENVTEST_K8S_VERSION = 1.30.0
-IMG = ollama-operator
+KO_DOCKER_REPO ?= ko.local
 
 # Setting SHELL to bash allows bash commands to be executed by recipes.
 # Options are set to exit when a recipe line exits non-zero or a piped command fails.
@@ -57,7 +57,7 @@ build: manifests generate-deep-copy ## Build manager binary.
 
 .PHONY: container-build
 container-build: $(KO) ## Build docker image with the manager.
-	KO_DOCKER_REPO=ko.local $(KO) build ./cmd/operator -B --sbom none
+	KO_DOCKER_REPO=$(KO_DOCKER_REPO) $(KO) build ./cmd/operator -B --sbom none
 
 ##@ Dependencies
 

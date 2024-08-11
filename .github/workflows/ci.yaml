@@ -79,4 +79,4 @@ jobs:
         with:
           version: v0.16.0
       - run: |
-          ko build ./cmd/operator --tarball ./img.tar --sbom none
+          ko build ./cmd/operator --sbom none --base-import-paths
