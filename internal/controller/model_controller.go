@@ -50,7 +50,7 @@ import (
 	"sigs.k8s.io/controller-runtime/pkg/client"
 	"sigs.k8s.io/controller-runtime/pkg/reconcile"
 
-	ollamav1alpha1 "aerf.io/ollama-operator/api/v1alpha1"
+	ollamav1alpha1 "aerf.io/ollama-operator/apis/ollama/v1alpha1"
 	"aerf.io/ollama-operator/internal/eventrecorder"
 )
 
@@ -174,7 +174,6 @@ func (r *ModelReconciler) Reconcile(ctx context.Context, model *ollamav1alpha1.M
 			Stream: ptr.To(false),
 		}, func(resp ollamaapi.ProgressResponse) error {
 			pullResp = resp
-			//log.V(1).Info("streaming pull response", "resp", resp)
 			return nil
 		}); err != nil {
 			recorder.WarningEventf("PullingModel", "failed to pull %q model", model.Spec.Model)
@@ -277,7 +276,6 @@ func (r *ModelReconciler) resources(model *ollamav1alpha1.Model) ([]*unstructure
 									applycorev1.ResourceRequirements().
 										WithRequests(model.Spec.Resources.Requests).
 										WithLimits(model.Spec.Resources.Limits),
-									//WithClaims(model.Spec.Resources.Claims),
 								).
 								WithPorts(
 									applycorev1.ContainerPort().

@@ -1,18 +1,26 @@
 package controller
 
 import (
+	"bytes"
+	"cmp"
 	"context"
+	"encoding/base64"
 	"encoding/json"
 	"fmt"
+	"io"
 	"net"
 	"net/http"
 	"net/url"
 	"strconv"
+	"strings"
 
 	xpv1 "github.com/crossplane/crossplane-runtime/apis/common/v1"
 	"github.com/crossplane/crossplane-runtime/pkg/errors"
 	"github.com/hashicorp/go-cleanhttp"
+	"github.com/klauspost/compress/gzip"
+	"github.com/klauspost/compress/zstd"
 	ollamaapi "github.com/ollama/ollama/api"
+	corev1 "k8s.io/api/core/v1"
 	apierrors "k8s.io/apimachinery/pkg/api/errors"
 	metav1 "k8s.io/apimachinery/pkg/apis/meta/v1"
 	"k8s.io/apimachinery/pkg/types"
@@ -21,26 +29,30 @@ import (
 	ctrl "sigs.k8s.io/controller-runtime"
 	"sigs.k8s.io/controller-runtime/pkg/builder"
 	"sigs.k8s.io/controller-runtime/pkg/client"
+	"sigs.k8s.io/controller-runtime/pkg/controller"
 	"sigs.k8s.io/controller-runtime/pkg/handler"
 	"sigs.k8s.io/controller-runtime/pkg/predicate"
 	"sigs.k8s.io/controller-runtime/pkg/reconcile"
+	"sigs.k8s.io/yaml"
 
-	ollamav1alpha1 "aerf.io/ollama-operator/api/v1alpha1"
+	ollamav1alpha1 "aerf.io/ollama-operator/apis/ollama/v1alpha1"
 )
 
 type PromptReconciler struct {
-	client         client.Client
-	recorder       record.EventRecorder
-	baseHTTPClient *http.Client
-	fieldManager   string
+	client                  client.Client
+	recorder                record.EventRecorder
+	baseHTTPClient          *http.Client
+	fieldManager            string
+	maxConcurrentReconciles int
 }
 
-func NewPromptReconciler(cli client.Client, recorder record.EventRecorder) *PromptReconciler {
+func NewPromptReconciler(cli client.Client, recorder record.EventRecorder, maxConcurrentReconciles int) *PromptReconciler {
 	return &PromptReconciler{
-		client:         cli,
-		recorder:       recorder,
-		baseHTTPClient: cleanhttp.DefaultPooledClient(),
-		fieldManager:   "prompt-controller",
+		client:                  cli,
+		recorder:                recorder,
+		baseHTTPClient:          cleanhttp.DefaultPooledClient(),
+		fieldManager:            "prompt-controller",
+		maxConcurrentReconciles: maxConcurrentReconciles,
 	}
 }
 
@@ -58,7 +70,7 @@ func (r *PromptReconciler) SetupWithManager(mgr ctrl.Manager) error {
 	return ctrl.NewControllerManagedBy(mgr).
 		For(&ollamav1alpha1.Prompt{},
 			builder.WithPredicates(
-				predicate.And[client.Object](
+				predicate.And(
 					predicate.GenerationChangedPredicate{},
 					predicate.ResourceVersionChangedPredicate{},
 				),
@@ -87,6 +99,9 @@ func (r *PromptReconciler) SetupWithManager(mgr ctrl.Manager) error {
 			}
 			return ctrlRequests
 		})).
+		WithOptions(controller.Options{
+			MaxConcurrentReconciles: r.maxConcurrentReconciles,
+		}).
 		Complete(
 			errors.WithSilentRequeueOnConflict(
 				reconcile.AsReconciler[*ollamav1alpha1.Prompt](mgr.GetClient(), r),
@@ -120,7 +135,7 @@ func (r *PromptReconciler) Reconcile(ctx context.Context, prompt *ollamav1alpha1
 
 	referencedModel := &ollamav1alpha1.Model{}
 	if err := r.client.Get(ctx, client.ObjectKey{
-		Namespace: prompt.Spec.ModelRef.Namespace,
+		Namespace: cmp.Or(prompt.Spec.ModelRef.Namespace, prompt.GetNamespace()),
 		Name:      prompt.Spec.ModelRef.Name,
 	}, referencedModel); err != nil {
 		if apierrors.IsNotFound(err) {
@@ -135,6 +150,13 @@ func (r *PromptReconciler) Reconcile(ctx context.Context, prompt *ollamav1alpha1
 		prompt.SetConditionsWithObservedGeneration(xpv1.Unavailable().WithMessage("Model is not ready and synced"))
 		return reconcile.Result{}, nil
 	}
+
+	waitingForResponseCond := xpv1.Creating().WithMessage("Waiting for model response")
+	if !prompt.Status.GetCondition(xpv1.TypeReady).Equal(waitingForResponseCond) {
+		prompt.SetConditionsWithObservedGeneration(waitingForResponseCond)
+		return reconcile.Result{Requeue: true}, nil
+	}
+
 	ollamaCli := r.ollamaClientForModel(referencedModel)
 
 	opts, err := r.getOptionsFromSpecOptions(prompt)
@@ -142,8 +164,24 @@ func (r *PromptReconciler) Reconcile(ctx context.Context, prompt *ollamav1alpha1
 		return reconcile.Result{}, err
 	}
 
+	var imageData []ollamaapi.ImageData
+	if len(prompt.Spec.Images) > 0 {
+		for _, image := range prompt.Spec.Images {
+			extracted, err := imageExtractor(ctx, r.client, image)
+			if err != nil {
+				return ctrl.Result{}, fmt.Errorf("failed to extract image: %w", err)
+			}
+
+			imgData, err := convertImageData(extracted)
+			if err != nil {
+				return ctrl.Result{}, errors.WithMessagef(err, "failed to decode images")
+			}
+			imageData = append(imageData, imgData)
+		}
+	}
+
 	generateResp := ollamaapi.GenerateResponse{}
-	err = ollamaCli.Generate(ctx, &ollamaapi.GenerateRequest{
+	req := &ollamaapi.GenerateRequest{
 		Model:    referencedModel.Spec.Model,
 		Prompt:   prompt.Spec.Prompt,
 		Suffix:   prompt.Spec.Suffix,
@@ -152,22 +190,20 @@ func (r *PromptReconciler) Reconcile(ctx context.Context, prompt *ollamav1alpha1
 		Context:  nil, // todo
 		Stream:   ptr.To(false),
 		Raw:      false,
-		Images:   nil, // todo
+		Images:   imageData,
 		Options:  opts,
-	}, func(resp ollamaapi.GenerateResponse) error {
+	}
+	err = ollamaCli.Generate(ctx, req, func(resp ollamaapi.GenerateResponse) error {
 		generateResp = resp
 		return nil
 	})
 	if err != nil {
 		return reconcile.Result{}, fmt.Errorf("failed to generate prompt: %w", err)
 	}
-	//jsonResp, err := json.Marshal(generateResp)
-	//if err != nil {
-	//	return reconcile.Result{}, err
-	//}
+
 	log.Info("generatedResponse", "resp", generateResp)
 	// todo handle done, doneReason
-	prompt.Status.Response = generateResp.Response
+	prompt.Status.Response = strings.TrimSpace(strings.TrimRight(generateResp.Response, " \n"))
 	prompt.Status.PromptResponseMeta = &ollamav1alpha1.PromptResponseMeta{
 		Context:   intToInt64Slice(generateResp.Context),
 		CreatedAt: metav1.NewTime(generateResp.CreatedAt),
@@ -177,8 +213,10 @@ func (r *PromptReconciler) Reconcile(ctx context.Context, prompt *ollamav1alpha1
 		LoadDuration:       metav1.Duration{Duration: generateResp.Metrics.LoadDuration},
 		PromptEvalCount:    int64(generateResp.Metrics.PromptEvalCount),
 		PromptEvalDuration: metav1.Duration{Duration: generateResp.Metrics.PromptEvalDuration},
+		PromptEvalRate:     fmt.Sprintf("%.2f tokens/s", float64(generateResp.PromptEvalCount)/generateResp.PromptEvalDuration.Seconds()),
 		EvalCount:          int64(generateResp.Metrics.EvalCount),
 		EvalDuration:       metav1.Duration{Duration: generateResp.Metrics.EvalDuration},
+		EvalRate:           fmt.Sprintf("%.2f tokens/s", float64(generateResp.EvalCount)/generateResp.EvalDuration.Seconds()),
 	}
 
 	prompt.SetConditionsWithObservedGeneration(xpv1.Available())
@@ -201,4 +239,75 @@ func (r *PromptReconciler) getOptionsFromSpecOptions(prompt *ollamav1alpha1.Prom
 	}
 	out := make(map[string]any)
 	return out, errors.WithMessage(json.Unmarshal(raw, &out), "failed to unmarshal options into json struct")
+}
+
+func convertImageData(data ollamav1alpha1.ImageData) (ollamaapi.ImageData, error) {
+	switch data.Format {
+	case ollamav1alpha1.ImageFormatNone, "":
+		content, err := base64.StdEncoding.DecodeString(data.Data)
+		return content, errors.Wrap(err, "failed to decode image in base64")
+	case ollamav1alpha1.ImageFormatGzip:
+		b64Dec := base64.NewDecoder(base64.StdEncoding, strings.NewReader(data.Data))
+		gzipReader, err := gzip.NewReader(b64Dec)
+		if err != nil {
+			return nil, err
+		}
+		defer gzipReader.Close()
+		content, err := io.ReadAll(gzipReader)
+		return content, errors.Wrap(err, "while decompressing image encoded in gzip format")
+	case ollamav1alpha1.ImageFormatZstd:
+		content, err := DecodeBase64Zstd([]byte(data.Data))
+		return content, errors.Wrap(err, "while decompressing image encoded in zstd")
+	default:
+		panic(fmt.Sprintf("Unknown image format %q, available formats: %+v. This panic should never happen, please file an issue in source repository", data.Format, ollamav1alpha1.ImageFormatAll))
+	}
+}
+
+func DecodeBase64Zstd(input []byte) ([]byte, error) {
+	b64Dec := base64.NewDecoder(base64.StdEncoding, bytes.NewReader(input))
+	zstdReader, err := zstd.NewReader(b64Dec)
+	if err != nil {
+		return nil, err
+	}
+	defer zstdReader.Close()
+	return io.ReadAll(zstdReader)
+}
+
+func imageExtractor(ctx context.Context, cli client.Reader, ref ollamav1alpha1.ImageSource) (ollamav1alpha1.ImageData, error) {
+	if ref.Inline != nil {
+		return ollamav1alpha1.ImageData{
+			Format: ref.Inline.Format,
+			Data:   ref.Inline.Data,
+		}, nil
+	}
+
+	if ref.ConfigMapKeyRef != nil {
+		cm := &corev1.ConfigMap{}
+		if err := cli.Get(ctx, client.ObjectKey{
+			Namespace: ref.ConfigMapKeyRef.Namespace,
+			Name:      ref.ConfigMapKeyRef.Name,
+		}, cm); err != nil {
+			return ollamav1alpha1.ImageData{}, fmt.Errorf("failed to get cm %s/%s: %s", ref.ConfigMapKeyRef.Name, ref.ConfigMapKeyRef.Namespace, err)
+		}
+		data, ok := cm.Data[ref.ConfigMapKeyRef.Key]
+		if !ok {
+			return ollamav1alpha1.ImageData{}, fmt.Errorf("key %q not found in configmap %s", ref.ConfigMapKeyRef.Key, ref.ConfigMapKeyRef.Name)
+		}
+		imgData := ollamav1alpha1.ImageData{}
+		return imgData, errors.Wrap(yaml.Unmarshal([]byte(data), &imgData), "failed to unmarshal image data")
+	}
+
+	secret := &corev1.Secret{}
+	if err := cli.Get(ctx, client.ObjectKey{
+		Namespace: ref.SecretKeyRef.Namespace,
+		Name:      ref.SecretKeyRef.Name,
+	}, secret); err != nil {
+		return ollamav1alpha1.ImageData{}, err
+	}
+	data, ok := secret.Data[ref.SecretKeyRef.Key]
+	if !ok {
+		return ollamav1alpha1.ImageData{}, fmt.Errorf("key %q not found in secret %s", ref.SecretKeyRef.Key, ref.SecretKeyRef.Name)
+	}
+	imgData := ollamav1alpha1.ImageData{}
+	return imgData, errors.Wrap(yaml.Unmarshal(data, &imgData), "failed to unmarshal image data")
 }

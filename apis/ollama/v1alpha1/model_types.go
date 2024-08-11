@@ -49,8 +49,6 @@ type OllamaModelDetails struct {
 	Families          []string `json:"families,omitempty"`
 }
 
-//var _ resource.Conditioned = &Model{}
-
 // +kubebuilder:object:root=true
 // +kubebuilder:subresource:status
 // +kubebuilder:printcolumn:name="MODEL",type="string",JSONPath=".spec.model"

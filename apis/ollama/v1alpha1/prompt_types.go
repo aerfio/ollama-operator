@@ -20,6 +20,8 @@ import (
 	xpv1 "github.com/crossplane/crossplane-runtime/apis/common/v1"
 	metav1 "k8s.io/apimachinery/pkg/apis/meta/v1"
 	"k8s.io/apimachinery/pkg/runtime"
+
+	cmnv1alpha1 "aerf.io/ollama-operator/apis/common/v1alpha1"
 )
 
 // PromptSpec defines the desired state of Prompt
@@ -37,13 +39,37 @@ type PromptSpec struct {
 	Template string `json:"template,omitempty"`
 	// +kubebuilder:pruning:PreserveUnknownFields
 	Options runtime.RawExtension `json:"options,omitempty"`
-	// todo ImageRefs
 
+	Images []ImageSource `json:"images,omitempty"`
+}
+
+// TODO cel expression that only 1 field should be set
+type ImageSource struct {
+	Inline          *ImageData                        `json:"inline,omitempty"`
+	SecretKeyRef    *xpv1.SecretKeySelector           `json:"secretKeyRef,omitempty"`
+	ConfigMapKeyRef *cmnv1alpha1.ConfigMapKeySelector `json:"configMapKeyRef,omitempty"`
+}
+
+// +kubebuilder:validation:Enum=gzip;zstd;none
+type ImageFormat string
+
+const (
+	ImageFormatNone ImageFormat = "none"
+	ImageFormatGzip ImageFormat = "gzip"
+	ImageFormatZstd ImageFormat = "zstd"
+)
+
+var ImageFormatAll = []ImageFormat{ImageFormatGzip, ImageFormatZstd}
+
+type ImageData struct {
+	Format ImageFormat `json:"format,omitempty"`
+	Data   string      `json:"data"`
 }
 
 type ModelRef struct {
-	Name      string `json:"name"`
-	Namespace string `json:"namespace"`
+	Name string `json:"name"`
+	// defaults to prompt namespace
+	Namespace string `json:"namespace,omitempty"`
 }
 
 // PromptStatus defines the observed state of Model
@@ -64,14 +90,16 @@ type PromptResponseMetrics struct {
 	LoadDuration       metav1.Duration `json:"loadDuration,omitempty"`
 	PromptEvalCount    int64           `json:"promptEvalCount,omitempty"`
 	PromptEvalDuration metav1.Duration `json:"promptEvalDuration,omitempty"`
+	PromptEvalRate     string          `json:"promptEvalRate,omitempty"`
 	EvalCount          int64           `json:"evalCount,omitempty"`
 	EvalDuration       metav1.Duration `json:"evalDuration,omitempty"`
+	EvalRate           string          `json:"evalRate,omitempty"`
 }
 
 // +kubebuilder:object:root=true
 // +kubebuilder:subresource:status
-// +kubebuilder:printcolumn:name="MODEL_NAME",type="string",JSONPath=".spec.modelRef.name"
-// +kubebuilder:printcolumn:name="MODEL_NAMESPACE",type="string",JSONPath=".spec.modelRef.name"
+// +kubebuilder:printcolumn:name="MODEL_REF_NAME",type="string",JSONPath=".spec.modelRef.name"
+// +kubebuilder:printcolumn:name="MODEL_REF_NAMESPACE",type="string",JSONPath=".spec.modelRef.name"
 // +kubebuilder:printcolumn:name="SYNCED",type="string",JSONPath=".status.conditions[?(@.type=='Synced')].status"
 // +kubebuilder:printcolumn:name="READY",type="string",JSONPath=".status.conditions[?(@.type=='Ready')].status"
 // +kubebuilder:printcolumn:name="AGE",type="date",JSONPath=".metadata.creationTimestamp"
