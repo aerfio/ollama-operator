@@ -25,7 +25,6 @@ import (
 	utilruntime "k8s.io/apimachinery/pkg/util/runtime"
 	clientgoscheme "k8s.io/client-go/kubernetes/scheme"
 	ctrl "sigs.k8s.io/controller-runtime"
-	"sigs.k8s.io/controller-runtime/pkg/cache"
 	"sigs.k8s.io/controller-runtime/pkg/client"
 	"sigs.k8s.io/controller-runtime/pkg/healthz"
 	"sigs.k8s.io/controller-runtime/pkg/log/zap"
@@ -39,7 +38,7 @@ import (
 
 	// Import all Kubernetes client auth plugins (e.g. Azure, GCP, OIDC, etc.)
 	// to ensure that exec-entrypoint and run can make use of them.
-	"aerf.io/k8sutils/cachedebug"
+
 	_ "k8s.io/client-go/plugin/pkg/client/auth"
 )
 
@@ -121,8 +120,6 @@ func main() {
 		metricsServerOptions.FilterProvider = filters.WithAuthenticationAndAuthorization
 	}
 
-	dct := cachedebug.NewDebugCacheTransformer("0.0.0.0:12345", scheme)
-
 	// containsImageSelector := labels.SelectorFromSet(map[string]string{"ollama.aerf.io/contains-image": "true"})
 	mgr, err := ctrl.NewManager(ctrl.GetConfigOrDie(), ctrl.Options{
 		Scheme:                 scheme,
@@ -131,6 +128,11 @@ func main() {
 		HealthProbeBindAddress: probeAddr,
 		LeaderElection:         enableLeaderElection,
 		LeaderElectionID:       "ollama-operator.aerf.io",
+		Client: client.Options{
+			Cache: &client.CacheOptions{
+				Unstructured: true,
+			},
+		},
 		// LeaderElectionReleaseOnCancel defines if the leader should step down voluntarily
 		// when the Manager ends. This requires the binary to immediately end when the
 		// Manager is stopped, otherwise, this setting is unsafe. Setting this significantly
@@ -141,19 +143,7 @@ func main() {
 		// the manager stops, so would be fine to enable this option. However,
 		// if you are doing or is intended to do any operation such as perform cleanups
 		// after the manager stops then its usage might be unsafe.
-		Client: client.Options{
-			Cache: &client.CacheOptions{
-				Unstructured: true,
-			},
-		},
 		LeaderElectionReleaseOnCancel: true,
-		Cache: cache.Options{
-			// ByObject: map[client.Object]cache.ByObject{
-			// 	&corev1.ConfigMap{}: {Label: containsImageSelector},
-			// 	&corev1.Secret{}:    {Label: containsImageSelector},
-			// },
-			DefaultTransform: dct.TransformFn(),
-		},
 	})
 	if err != nil {
 		setupLog.Error(err, "unable to start manager")
@@ -175,11 +165,6 @@ func main() {
 	}
 	if err := mgr.AddReadyzCheck("readyz", healthz.Ping); err != nil {
 		setupLog.Error(err, "unable to set up ready check")
-		os.Exit(1)
-	}
-
-	if err := mgr.Add(dct); err != nil {
-		setupLog.Error(err, "unable to add cache debugging")
 		os.Exit(1)
 	}
 
