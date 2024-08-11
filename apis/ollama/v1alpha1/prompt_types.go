@@ -122,10 +122,6 @@ func (in *Prompt) SetConditionsWithObservedGeneration(c ...xpv1.Condition) {
 	in.Status.SetConditions(c...)
 }
 
-//func (in *Model) SetConditions(c ...xpv1.Condition) {
-//	in.Status.SetConditions(c...)
-//}
-
 func (in *Prompt) GetCondition(ct xpv1.ConditionType) xpv1.Condition {
 	return in.Status.GetCondition(ct)
 }

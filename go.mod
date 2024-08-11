@@ -1,6 +1,6 @@
 module aerf.io/ollama-operator
 
-go 1.22.5
+go 1.22.6
 
 require (
 	github.com/crossplane/crossplane-runtime v1.17.0-rc.0.0.20240722174932-1e7193e9c065
