@@ -81,4 +81,4 @@ jobs:
         with:
           version: v0.16.0
       - run: |
-          ko build ./cmd/operator --sbom none --bare
+          ko build ./cmd/operator --sbom none --bare --tags "sha-$(git rev-parse --short=7 HEAD)"
