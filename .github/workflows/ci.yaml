@@ -81,4 +81,4 @@ jobs:
         with:
           version: v0.16.0
       - run: |
-          ko build ./cmd/operator --sbom none --base-import-paths
+          ko build ./cmd/operator --sbom none --bare
