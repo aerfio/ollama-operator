@@ -1,0 +1,53 @@
+name: Renovate
+"on":
+  # Allows manual/automated trigger for debugging purposes
+  workflow_dispatch:
+    inputs:
+      logLevel:
+        description: "Renovate's log level"
+        required: true
+        default: "info"
+        type: string
+  schedule:
+    - cron: "0 8 * * *"
+  push:
+    branches:
+      - main
+
+concurrency:
+  cancel-in-progress: true
+  group: ${{ github.workflow }}-${{ github.ref }}
+
+env:
+  LOG_LEVEL: "debug"
+  RENOVATE_VERSION: 38.21-full # renovate: datasource=docker depName=renovate packageName=ghcr.io/renovatebot/renovate
+
+jobs:
+  renovate:
+    runs-on: ubuntu-22.04
+    if: |
+      !github.event.repository.fork &&
+      !github.event.pull_request.head.repo.fork
+    steps:
+      - name: Checkout
+        uses: actions/checkout@v4
+      - name: Get token
+        id: get_token
+        uses: actions/create-github-app-token@v1
+        with:
+          private-key: ${{ secrets.GHA_PRIVATE_KEY }}
+          app-id: ${{ secrets.GHA_APP_ID }}
+          owner: ${{ github.repository_owner }}
+          repositories: ${{ github.repository }}
+      - name: Self-hosted Renovate
+        uses: renovatebot/github-action@v40.2.5
+        env:
+          RENOVATE_REPOSITORIES: ${{ github.repository }}
+          # Use GitHub API to create commits
+          RENOVATE_PLATFORM_COMMIT: "true"
+          LOG_LEVEL: ${{ github.event.inputs.logLevel || env.LOG_LEVEL }}
+          RENOVATE_ALLOWED_POST_UPGRADE_COMMANDS: '[".*"]'
+        with:
+          configurationFile: renovate.json
+          token: "${{ secrets.RENOVATE_TOKEN }}"
+          renovate-version: ${{ env.RENOVATE_VERSION }}

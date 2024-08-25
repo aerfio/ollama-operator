@@ -29,6 +29,9 @@ help: ## Display this help.
 
 ##@ Development
 
+.PHONY: generate
+generate: manifests generate-deep-copy
+
 .PHONY: manifests
 manifests: controller-gen ## Generate WebhookConfiguration, ClusterRole and CustomResourceDefinition objects.
 	$(CONTROLLER_GEN) crd paths="./..." output:crd:artifacts:config=crds
