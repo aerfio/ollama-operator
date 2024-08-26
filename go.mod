@@ -6,7 +6,7 @@ require (
 	github.com/crossplane/crossplane-runtime v1.17.0-rc.0.0.20240722174932-1e7193e9c065
 	github.com/hashicorp/go-cleanhttp v0.5.2
 	github.com/klauspost/compress v1.17.9
-	github.com/ollama/ollama v0.3.5
+	github.com/ollama/ollama v0.3.6
 	k8s.io/api v0.30.3
 	k8s.io/apimachinery v0.30.3
 	k8s.io/client-go v0.30.3
