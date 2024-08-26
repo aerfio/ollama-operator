@@ -52,9 +52,6 @@ jobs:
         with:
           go-version-file: go.mod
           cache: false # golangci-lint caches go modules
-      - uses: actions/setup-go@v5
-        with:
-          go-version-file: go.mod
       - name: golangci-lint
         uses: golangci/golangci-lint-action@v6
         with:

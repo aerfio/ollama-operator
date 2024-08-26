@@ -1,10 +1,17 @@
 {
   "$schema": "https://docs.renovatebot.com/renovate-schema.json",
   "extends": [
-    "config:recommended"
+    "config:recommended",
+    "helpers:pinGitHubActionDigests"
   ],
   "prConcurrentLimit": 0,
   "prHourlyLimit": 0,
+  // We don't want to separate major and minor upgrades in separate PRs since
+  // we can upgrade them together in a single PR.
+  "separateMajorMinor": false,
+  // We don't want to separate minor patch upgrades in separate PRs since
+  // we can upgrade them together in a single PR.
+  "separateMinorPatch": false,
   "postUpdateOptions": [
     "gomodTidy",
     "gomodUpdateImportPaths"
@@ -16,12 +23,6 @@
     "enabled": true
   },
   "osvVulnerabilityAlerts": true,
-  "crossplane": {
-    "enabled": true,
-    "fileMatch": [
-      "crossplane/.+\\.yaml$"
-    ]
-  },
   "packageRules": [
     {
       "description": "Single PR for all kubernetes dependency updates, as they usually are all linked",
