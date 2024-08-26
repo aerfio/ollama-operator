@@ -3,7 +3,7 @@ apiVersion: apiextensions.k8s.io/v1
 kind: CustomResourceDefinition
 metadata:
   annotations:
-    controller-gen.kubebuilder.io/version: v0.15.0
+    controller-gen.kubebuilder.io/version: v0.16.1
   name: prompts.ollama.aerf.io
 spec:
   group: ollama.aerf.io
@@ -59,7 +59,6 @@ spec:
             properties:
               images:
                 items:
-                  description: TODO cel expression that only 1 field should be set
                   properties:
                     configMapKeyRef:
                       description: A ConfigMapKeySelector is a reference to a configmap
