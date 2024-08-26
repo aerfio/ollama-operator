@@ -83,7 +83,7 @@ ENVTEST_VERSION ?= release-0.18
 # renovate: datasource=github-releases depName=golangci/golangci-lint
 GOLANGCI_LINT_VERSION ?= v1.60.3
 # renovate: datasource=github-releases depName=ko-build/ko
-KO_VERSION ?= v0.15.4
+KO_VERSION ?= v0.16.0
 
 .PHONY: controller-gen
 controller-gen: $(CONTROLLER_GEN) ## Download controller-gen locally if necessary.
