@@ -37,7 +37,7 @@ jobs:
         uses: actions/create-github-app-token@v1
         with:
           private-key: ${{ secrets.GHA_PRIVATE_KEY }}
-          app-id: ${{ secrets.GHA_CLIENT_ID }}
+          app-id: ${{ secrets.GHA_APP_ID }}
           owner: ${{ github.repository_owner }}
           repositories: ${{ github.repository }}
       - name: Self-hosted Renovate
