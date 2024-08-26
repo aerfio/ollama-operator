@@ -20,7 +20,7 @@ concurrency:
 
 env:
   LOG_LEVEL: "debug"
-  RENOVATE_VERSION: 38.21-full # renovate: datasource=docker depName=renovate packageName=ghcr.io/renovatebot/renovate
+  RENOVATE_VERSION: 38.55-full # renovate: datasource=docker depName=renovate packageName=ghcr.io/renovatebot/renovate
 
 jobs:
   renovate:
