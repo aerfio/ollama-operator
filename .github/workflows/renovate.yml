@@ -30,15 +30,15 @@ jobs:
       !github.event.pull_request.head.repo.fork
     steps:
       - name: Checkout
-        uses: actions/checkout@v4
+        uses: actions/checkout@692973e3d937129bcbf40652eb9f2f61becf3332 # v4
       - name: Get token
         id: get_token
-        uses: cilium/actions-app-token@v0.21.0
+        uses: cilium/actions-app-token@350a14155dd9be79227f081310f4d77fdf792e76 # v0.21.0
         with:
           APP_PEM: ${{ secrets.GHA_PRIVATE_KEY }}
           APP_ID: ${{ secrets.GHA_APP_ID }}
       - name: Self-hosted Renovate
-        uses: renovatebot/github-action@v40.2.6
+        uses: renovatebot/github-action@b266b24b144602ed4f512f0773009d026722f4cc # v40.2.6
         env:
           RENOVATE_REPOSITORIES: ${{ github.repository }}
           # Use GitHub API to create commits
