@@ -10,10 +10,6 @@ name: Renovate
         type: string
   schedule:
     - cron: "0 8 * * 1"
-  push:
-    branches:
-      - main
-  # pull_request:
 
 concurrency:
   cancel-in-progress: true
