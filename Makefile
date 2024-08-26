@@ -81,7 +81,7 @@ KO = $(LOCALBIN)/ko
 CONTROLLER_TOOLS_VERSION ?= v0.15.0
 ENVTEST_VERSION ?= release-0.18
 # renovate: datasource=github-releases depName=golangci/golangci-lint
-GOLANGCI_LINT_VERSION ?= v1.59.1
+GOLANGCI_LINT_VERSION ?= v1.60.3
 # renovate: datasource=github-releases depName=ko-build/ko
 KO_VERSION ?= v0.15.4
 
