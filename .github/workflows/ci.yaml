@@ -7,6 +7,11 @@ name: CI
     branches:
       - main
       - release-*
+
+env:
+  # renovate: datasource=github-releases depName=golangci/golangci-lint
+  GOLANGCI_LINT_VERSION: v1.59.1
+
 jobs:
   test:
     runs-on: ubuntu-22.04
@@ -52,13 +57,10 @@ jobs:
         with:
           go-version-file: go.mod
           cache: false # golangci-lint caches go modules
-      - uses: actions/setup-go@v5
-        with:
-          go-version-file: go.mod
       - name: golangci-lint
         uses: golangci/golangci-lint-action@v6
         with:
-          version: v1.59.1
+          version: ${{ env.GOLANGCI_LINT_VERSION }}
   check-vulnerabilities:
     runs-on: ubuntu-22.04
     steps:
