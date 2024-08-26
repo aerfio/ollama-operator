@@ -45,6 +45,7 @@ jobs:
           RENOVATE_PLATFORM_COMMIT: "true"
           LOG_LEVEL: ${{ github.event.inputs.logLevel || env.LOG_LEVEL }}
           RENOVATE_ALLOWED_POST_UPGRADE_COMMANDS: '[".*"]'
+          RENOVATE_KEEP_UPDATED_LABEL: renovate-keep-updated
         with:
           configurationFile: .github/renovate.json5
           token: ${{ steps.get_token.outputs.app_token }}
