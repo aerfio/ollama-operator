@@ -34,7 +34,7 @@ jobs:
           APP_PEM: ${{ secrets.GHA_PRIVATE_KEY }}
           APP_ID: ${{ secrets.GHA_APP_ID }}
       - name: Self-hosted Renovate
-        uses: renovatebot/github-action@b266b24b144602ed4f512f0773009d026722f4cc # v40.2.6
+        uses: renovatebot/github-action@630a255a1f2f56c8d8ce160bed3e3ca577ca53e2 # v40.2.7
         env:
           RENOVATE_REPOSITORIES: ${{ github.repository }}
           # Use GitHub API to create commits
