@@ -81,13 +81,13 @@
       ]
     },
     {
-      // handle default ollama container image
-      "customType": "regex",
+      // thanks again cilium :*
       "fileMatch": [
-        "\\.go$"
+        "^internal/defaults/defaults\\.go$"
       ],
       "matchStrings": [
-        "\\s*[a-zA-Z0-9_]+?Tag\\s+=\\s+\"(?<currentValue>.+?)\" \/\/\ renovate: datasource=(?<datasource>.+?) depName=(?<depName>.+?)(?: (?:packageName|lookupName)=(?<packageName>.+?))?(?: versioning=(?<versioning>.+?))?\\s",
+        "\/\/ renovate: datasource=(?<datasource>.*?)\\s+.+Image = \"(?<depName>.*):(?<currentValue>.*)@(?<currentDigest>sha256:[a-f0-9]+)\"",
+        "\/\/ renovate: datasource=(?<datasource>.*?) depName=(?<depName>.*?)\\s+Version = \"(?<currentValue>.*)\""
       ]
     }
   ],

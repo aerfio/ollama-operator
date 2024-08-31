@@ -6,9 +6,7 @@ import (
 )
 
 const (
-	DefaultOllamaPort              = 11434
-	DefaultOllamaContainerImageTag = "ollama/ollama:0.3.3" // renovate: datasource=docker depName=ollama packageName=ollama/ollama
-	DefaultOllamaContainerImage    = "ollama/ollama:" + DefaultOllamaContainerImageTag
+	DefaultOllamaPort = 11434
 )
 
 func toUnstructured(obj any) (*unstructured.Unstructured, error) {
