@@ -171,16 +171,16 @@ func (r *PromptReconciler) Reconcile(ctx context.Context, prompt *ollamav1alpha1
 	}
 
 	var specContext []int
-	if len(prompt.Spec.Context) > 0 {
+	if prompt.Spec.Context != "" {
 		decoded, err := base64.StdEncoding.DecodeString(prompt.Spec.Context)
 		if err != nil {
 			return ctrl.Result{}, errors.WithMessagef(err, "failed to decode context")
 		}
-		context := []int{}
-		if err := json.Unmarshal(decoded, &context); err != nil {
+		promptCtx := []int{}
+		if err := json.Unmarshal(decoded, &promptCtx); err != nil {
 			return ctrl.Result{}, errors.WithMessagef(err, "failed to unmarshal context into []int")
 		}
-		specContext = context
+		specContext = promptCtx
 	}
 
 	generateResp := ollamaapi.GenerateResponse{}
@@ -231,14 +231,6 @@ func (r *PromptReconciler) Reconcile(ctx context.Context, prompt *ollamav1alpha1
 	prompt.SetConditionsWithObservedGeneration(xpv1.Available())
 
 	return reconcile.Result{}, nil
-}
-
-func intToInt64Slice(in []int) []int64 {
-	out := make([]int64, len(in))
-	for i := range in {
-		out[i] = int64(in[i])
-	}
-	return out
 }
 
 func (r *PromptReconciler) getOptionsFromSpecOptions(prompt *ollamav1alpha1.Prompt) (map[string]any, error) {
