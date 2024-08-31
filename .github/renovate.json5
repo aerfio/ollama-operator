@@ -31,9 +31,9 @@
         "go"
       ],
       "groupName": "kubernetes deps",
-      "matchPackagePrefixes": [
-        "k8s.io",
-        "sigs.k8s.io"
+      "matchPackageNames": [
+        "k8s.io{/,}**",
+        "sigs.k8s.io{/,}**"
       ]
     },
     {
@@ -47,6 +47,7 @@
   ],
   "customManagers": [
     {
+      "customType": "regex",
       "description": "Update `version:` and `_VERSION:` variables in github workflows",
       "fileMatch": [
         "^\\.github/workflows/[^/]+\\.ya?ml$"
@@ -81,13 +82,14 @@
       ]
     },
     {
-      // thanks again cilium :*
+      // thanks cilium :*
+      "customType": "regex",
       "fileMatch": [
         "^internal/defaults/defaults\\.go$"
       ],
       "matchStrings": [
-        "\\s*\/\/ renovate: datasource=(?<datasource>.*?)\\s+.+Image = \"(?<depName>.*):(?<currentValue>.*)\"",
-        "\\s*\/\/ renovate: datasource=(?<datasource>.*?) depName=(?<depName>.*?)\\s+Version = \"(?<currentValue>.*)\""
+        "\/\/ renovate: datasource=(?<datasource>.*?)\\s+.+Image = \"(?<depName>.*):(?<currentValue>.*)\"",
+        "\/\/ renovate: datasource=(?<datasource>.*?) depName=(?<depName>.*?)\\s+Version = \"(?<currentValue>.*)\""
       ]
     }
   ],
