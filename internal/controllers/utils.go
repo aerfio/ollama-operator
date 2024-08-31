@@ -7,7 +7,7 @@ import (
 
 const (
 	DefaultOllamaPort           = 11434
-	DefaultOllamaContainerImage = "ollama/ollama:0.3.8"
+	DefaultOllamaContainerImage = "ollama/ollama:0.3.3"
 )
 
 func toUnstructured(obj any) (*unstructured.Unstructured, error) {
