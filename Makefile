@@ -59,9 +59,14 @@ fmt: ${GOLANGCI_LINT}
 ##@ Build
 
 .PHONY: build
-build: manifests generate-deep-copy ## Build manager binary.
-	go build -o bin/operator ./cmd/operator
-	go build -o bin/mergepatcher ./cmd/mergepatcher
+build:
+	@for dir in ./cmd/*; do \
+		if [ -d "$$dir" ]; then \
+			bin_name=$$(basename "$$dir"); \
+			echo "Building $$bin_name..."; \
+			go build -o "./bin/$$bin_name" "$$dir"; \
+		fi \
+	done
 
 .PHONY: container-build
 container-build: $(KO) ## Build docker image with the manager.
