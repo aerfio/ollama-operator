@@ -10,13 +10,18 @@ name: Renovate
         type: string
   schedule:
     - cron: "0 8 * * 1"
+  pull_request:
+    paths:
+      - ".github/workflows/renovate.yml"
+      - ".github/workflows/validate-renovate-config.yml"
+      - ".github/renovate.json5"
 
 concurrency:
   cancel-in-progress: true
   group: ${{ github.workflow }}-${{ github.ref }}
 
 env:
-  LOG_LEVEL: "info"
+  LOG_LEVEL: "debug"
 
 jobs:
   renovate:
@@ -33,6 +38,8 @@ jobs:
         with:
           APP_PEM: ${{ secrets.GHA_PRIVATE_KEY }}
           APP_ID: ${{ secrets.GHA_APP_ID }}
+      - run: | 
+          echo ${{ github.ref }}
       - name: Self-hosted Renovate
         uses: renovatebot/github-action@630a255a1f2f56c8d8ce160bed3e3ca577ca53e2 # v40.2.7
         env:
@@ -45,8 +52,7 @@ jobs:
         with:
           configurationFile: .github/renovate.json5
           token: ${{ steps.get_token.outputs.app_token }}
-          # renovate: datasource=github-releases depName=renovatebot/renovate
-          renovate-version: 38.47-full
+          renovate-version: 38.47-full # renovate: datasource=docker depName=renovate packageName=ghcr.io/renovatebot/renovate
           docker-user: root
           docker-cmd-file: .github/actions/renovate/entrypoint.sh
           mount-docker-socket: true
