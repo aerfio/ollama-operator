@@ -9,7 +9,6 @@ import (
 	"github.com/crossplane/crossplane-runtime/pkg/errors"
 	jsonpatch "github.com/evanphx/json-patch/v5"
 	"k8s.io/apimachinery/pkg/apis/meta/v1/unstructured"
-	kjson "sigs.k8s.io/json"
 
 	cmnv1alpha1 "aerf.io/ollama-operator/apis/common/v1alpha1"
 )
@@ -48,7 +47,7 @@ func ApplyMerge(obj any, patches *cmnv1alpha1.MergePatch) (any, error) {
 			return nil, fmt.Errorf("failed to marshal merge patch: %s", err)
 		}
 
-		strictErr, err := kjson.UnmarshalStrict(marshalledPatch, &emptyObj)
+		strictErr, err := json.Unmarshal(marshalledPatch, &emptyObj)
 		err = errors.Join(append(strictErr, err)...)
 		if err != nil {
 			return nil, fmt.Errorf("failed to unmarshal merge patch: %s", err)
