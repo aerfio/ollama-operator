@@ -21,6 +21,8 @@ import (
 	"flag"
 	"os"
 
+	corev1 "k8s.io/api/core/v1"
+	"k8s.io/apimachinery/pkg/labels"
 	"k8s.io/apimachinery/pkg/runtime"
 	utilruntime "k8s.io/apimachinery/pkg/util/runtime"
 	clientgoscheme "k8s.io/client-go/kubernetes/scheme"
@@ -34,12 +36,8 @@ import (
 	"sigs.k8s.io/controller-runtime/pkg/webhook"
 
 	ollamav1alpha1 "aerf.io/ollama-operator/apis/ollama/v1alpha1"
+	"aerf.io/ollama-operator/internal/controllers"
 
-	"aerf.io/ollama-operator/internal/controller"
-
-	// Import all Kubernetes client auth plugins (e.g. Azure, GCP, OIDC, etc.)
-	// to ensure that exec-entrypoint and run can make use of them.
-	"aerf.io/k8sutils/cachedebug"
 	_ "k8s.io/client-go/plugin/pkg/client/auth"
 )
 
@@ -60,6 +58,7 @@ func main() {
 	var secureMetrics bool
 	var enableHTTP2 bool
 	var tlsOpts []func(*tls.Config)
+	promptControllerMaxConcurrentReconciles := 10
 	flag.StringVar(&metricsAddr, "metrics-bind-address", "0", "The address the metrics endpoint binds to. "+
 		"Use :8443 for HTTPS or :8080 for HTTP, or leave as 0 to disable the metrics service.")
 	flag.StringVar(&probeAddr, "health-probe-bind-address", ":8081", "The address the probe endpoint binds to.")
@@ -70,6 +69,8 @@ func main() {
 		"If set, the metrics endpoint is served securely via HTTPS. Use --metrics-secure=false to use HTTP instead.")
 	flag.BoolVar(&enableHTTP2, "enable-http2", false,
 		"If set, HTTP/2 will be enabled for the metrics and webhook servers")
+	flag.IntVar(&promptControllerMaxConcurrentReconciles, "prompt-controller.max-concurrent-reconciles", promptControllerMaxConcurrentReconciles, "Max concurrent reconciles of the Prompt Controller")
+
 	opts := zap.Options{
 		Development: true,
 	}
@@ -121,9 +122,7 @@ func main() {
 		metricsServerOptions.FilterProvider = filters.WithAuthenticationAndAuthorization
 	}
 
-	dct := cachedebug.NewDebugCacheTransformer("0.0.0.0:12345", scheme)
-
-	// containsImageSelector := labels.SelectorFromSet(map[string]string{"ollama.aerf.io/contains-image": "true"})
+	containsImageSelector := labels.SelectorFromSet(map[string]string{"ollama.aerf.io/contains-image": "true"})
 	mgr, err := ctrl.NewManager(ctrl.GetConfigOrDie(), ctrl.Options{
 		Scheme:                 scheme,
 		Metrics:                metricsServerOptions,
@@ -131,6 +130,18 @@ func main() {
 		HealthProbeBindAddress: probeAddr,
 		LeaderElection:         enableLeaderElection,
 		LeaderElectionID:       "ollama-operator.aerf.io",
+		Cache: cache.Options{
+			ByObject: map[client.Object]cache.ByObject{
+				&corev1.ConfigMap{}: {
+					Label: containsImageSelector,
+				},
+			},
+		},
+		Client: client.Options{
+			Cache: &client.CacheOptions{
+				Unstructured: true,
+			},
+		},
 		// LeaderElectionReleaseOnCancel defines if the leader should step down voluntarily
 		// when the Manager ends. This requires the binary to immediately end when the
 		// Manager is stopped, otherwise, this setting is unsafe. Setting this significantly
@@ -141,30 +152,22 @@ func main() {
 		// the manager stops, so would be fine to enable this option. However,
 		// if you are doing or is intended to do any operation such as perform cleanups
 		// after the manager stops then its usage might be unsafe.
-		Client: client.Options{
-			Cache: &client.CacheOptions{
-				Unstructured: true,
-			},
-		},
 		LeaderElectionReleaseOnCancel: true,
-		Cache: cache.Options{
-			// ByObject: map[client.Object]cache.ByObject{
-			// 	&corev1.ConfigMap{}: {Label: containsImageSelector},
-			// 	&corev1.Secret{}:    {Label: containsImageSelector},
-			// },
-			DefaultTransform: dct.TransformFn(),
-		},
 	})
 	if err != nil {
 		setupLog.Error(err, "unable to start manager")
 		os.Exit(1)
 	}
 
-	if err = controller.NewModelReconciler(mgr.GetClient(), mgr.GetEventRecorderFor("model-controller")).SetupWithManager(mgr); err != nil {
+	if err = controllers.NewModelReconciler(mgr.GetClient(), mgr.GetEventRecorderFor("model-controller")).SetupWithManager(mgr); err != nil {
 		setupLog.Error(err, "unable to create controller", "controller", "Model")
 		os.Exit(1)
 	}
-	if err = controller.NewPromptReconciler(mgr.GetClient(), mgr.GetEventRecorderFor("prompt-controller")).SetupWithManager(mgr); err != nil {
+	if err = controllers.NewPromptReconciler(
+		mgr.GetClient(),
+		mgr.GetEventRecorderFor("prompt-controller"),
+		promptControllerMaxConcurrentReconciles,
+	).SetupWithManager(mgr); err != nil {
 		setupLog.Error(err, "unable to create controller", "controller", "Prompt")
 		os.Exit(1)
 	}
@@ -175,11 +178,6 @@ func main() {
 	}
 	if err := mgr.AddReadyzCheck("readyz", healthz.Ping); err != nil {
 		setupLog.Error(err, "unable to set up ready check")
-		os.Exit(1)
-	}
-
-	if err := mgr.Add(dct); err != nil {
-		setupLog.Error(err, "unable to add cache debugging")
 		os.Exit(1)
 	}
 

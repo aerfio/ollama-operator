@@ -2,7 +2,6 @@ package main
 
 import (
 	"cmp"
-	_ "embed"
 	"fmt"
 
 	corev1 "k8s.io/api/core/v1"
@@ -16,8 +15,11 @@ import (
 
 	cmnv1alpha1 "aerf.io/ollama-operator/apis/common/v1alpha1"
 	ollamav1alpha1 "aerf.io/ollama-operator/apis/ollama/v1alpha1"
-	"aerf.io/ollama-operator/internal/controller"
+	"aerf.io/ollama-operator/internal/controllers"
+	"aerf.io/ollama-operator/internal/defaults"
 	"aerf.io/ollama-operator/internal/patches"
+
+	_ "embed"
 )
 
 //go:embed values.yaml
@@ -87,12 +89,12 @@ func stsResource() *applyappsv1.StatefulSetApplyConfiguration {
 						WithContainers(
 							applycorev1.Container().
 								WithName("ollama").
-								WithImage(cmp.Or(model.Spec.OllamaImage, controller.DefaultOllamaContainerImage)).
+								WithImage(cmp.Or(model.Spec.OllamaImage, defaults.OllamaImage)).
 								WithImagePullPolicy(corev1.PullIfNotPresent).
 								WithPorts(
 									applycorev1.ContainerPort().
 										WithName(httpAPIPortName).
-										WithContainerPort(controller.DefaultOllamaPort).
+										WithContainerPort(controllers.DefaultOllamaPort).
 										WithProtocol(corev1.ProtocolTCP),
 								).
 								WithEnv(
@@ -118,7 +120,7 @@ func stsResource() *applyappsv1.StatefulSetApplyConfiguration {
 									WithPeriodSeconds(5).
 									WithHTTPGet(
 										applycorev1.HTTPGetAction().
-											WithPort(intstr.FromInt32(controller.DefaultOllamaPort)).
+											WithPort(intstr.FromInt32(controllers.DefaultOllamaPort)).
 											WithPath("/"),
 									),
 								).
@@ -131,5 +133,4 @@ func stsResource() *applyappsv1.StatefulSetApplyConfiguration {
 					),
 			),
 		)
-
 }

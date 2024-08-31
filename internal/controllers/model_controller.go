@@ -14,7 +14,7 @@ See the License for the specific language governing permissions and
 limitations under the License.
 */
 
-package controller
+package controllers
 
 import (
 	"cmp"
@@ -30,7 +30,6 @@ import (
 
 	xpv1 "github.com/crossplane/crossplane-runtime/apis/common/v1"
 	"github.com/crossplane/crossplane-runtime/pkg/errors"
-	"github.com/crossplane/crossplane-runtime/pkg/resource"
 	"github.com/hashicorp/go-cleanhttp"
 	ollamaapi "github.com/ollama/ollama/api"
 	appsv1 "k8s.io/api/apps/v1"
@@ -52,6 +51,7 @@ import (
 	"sigs.k8s.io/controller-runtime/pkg/reconcile"
 
 	ollamav1alpha1 "aerf.io/ollama-operator/apis/ollama/v1alpha1"
+	"aerf.io/ollama-operator/internal/defaults"
 	"aerf.io/ollama-operator/internal/eventrecorder"
 )
 
@@ -59,17 +59,13 @@ type ModelReconciler struct {
 	client         client.Client
 	recorder       record.EventRecorder
 	baseHTTPClient *http.Client
-	fieldManager   string
-	apiAplicator   resource.Applicator
 }
 
 func NewModelReconciler(cli client.Client, recorder record.EventRecorder) *ModelReconciler {
 	return &ModelReconciler{
-		client:         cli,
+		client:         client.WithFieldOwner(cli, "ollama-operator.model-controller"),
 		recorder:       recorder,
 		baseHTTPClient: cleanhttp.DefaultPooledClient(),
-		fieldManager:   "model-controller",
-		apiAplicator:   resource.NewAPIPatchingApplicator(cli),
 	}
 }
 
@@ -82,14 +78,9 @@ func (r *ModelReconciler) ollamaClientForModel(model *ollamav1alpha1.Model) *oll
 	return ollamaapi.NewClient(u, r.baseHTTPClient)
 }
 
-//func (r *ModelReconciler) apply(ctx context.Context, obj *unstructured.Unstructured, opts ...client.PatchOption) error {
-//
-//
-//	resource2.APIPatchingApplicator{}
-//	return r.client.Patch(ctx, obj, client.Apply,
-//		slices.Concat([]client.PatchOption{client.ForceOwnership, client.FieldOwner(r.fieldManager)}, opts)...,
-//	)
-//}
+func (r *ModelReconciler) apply(ctx context.Context, obj *unstructured.Unstructured, opts ...client.PatchOption) error {
+	return r.client.Patch(ctx, obj, client.Apply, append(opts, client.ForceOwnership)...)
+}
 
 func (r *ModelReconciler) eventRecorderFor(obj runtime.Object) *eventrecorder.EventRecorder {
 	return eventrecorder.New(r.recorder, obj)
@@ -98,7 +89,7 @@ func (r *ModelReconciler) eventRecorderFor(obj runtime.Object) *eventrecorder.Ev
 func (r *ModelReconciler) Reconcile(ctx context.Context, model *ollamav1alpha1.Model) (result ctrl.Result, retErr error) {
 	defer func() {
 		model.Status.ObservedGeneration = model.GetGeneration()
-		model.Status.OllamaImage = cmp.Or(model.Spec.OllamaImage, DefaultOllamaContainerImage)
+		model.Status.OllamaImage = cmp.Or(model.Spec.OllamaImage, defaults.OllamaImage)
 		if retErr != nil {
 			model.SetConditionsWithObservedGeneration(xpv1.ReconcileError(retErr))
 		} else {
@@ -130,7 +121,7 @@ func (r *ModelReconciler) Reconcile(ctx context.Context, model *ollamav1alpha1.M
 
 	for _, res := range resources {
 		log.V(1).Info("Applying object", "object", res)
-		if err := r.apiAplicator.Apply(ctx, res); err != nil {
+		if err := r.apply(ctx, res); err != nil {
 			return ctrl.Result{}, err
 		}
 	}
@@ -180,7 +171,6 @@ func (r *ModelReconciler) Reconcile(ctx context.Context, model *ollamav1alpha1.M
 			Stream: ptr.To(false),
 		}, func(resp ollamaapi.ProgressResponse) error {
 			pullResp = resp
-			// log.V(1).Info("streaming pull response", "resp", resp)
 			return nil
 		}); err != nil {
 			recorder.WarningEventf("PullingModel", "failed to pull %q model", model.Spec.Model)
@@ -277,7 +267,7 @@ func (r *ModelReconciler) resources(model *ollamav1alpha1.Model) ([]*unstructure
 						WithContainers(
 							applycorev1.Container().
 								WithName("ollama").
-								WithImage(cmp.Or(model.Spec.OllamaImage, DefaultOllamaContainerImage)).
+								WithImage(cmp.Or(model.Spec.OllamaImage, defaults.OllamaImage)).
 								WithImagePullPolicy(corev1.PullIfNotPresent).
 								WithPorts(
 									applycorev1.ContainerPort().

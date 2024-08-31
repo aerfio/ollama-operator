@@ -91,12 +91,4 @@ func ApplyJSONPatch(obj any, patches *cmnv1alpha1.JSONPatch) (any, error) {
 		return nil, fmt.Errorf("failed to unmarshal JSON patched object into empty object with the same type as input, err: %s, resource: %s", err, patchedResource)
 	}
 	return emptyObj, nil
-	//
-	//resVal := reflect.ValueOf(obj)
-	//objVal := reflect.ValueOf(emptyObj)
-	//if !objVal.Type().AssignableTo(resVal.Type()) {
-	//	return nil, fmt.Errorf("type %s is not assignable to type %s", objVal.Type(), resVal.Type())
-	//}
-	//reflect.Indirect(resVal).Set(reflect.Indirect(objVal))
-	//return nil
 }

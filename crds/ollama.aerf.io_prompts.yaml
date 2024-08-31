@@ -3,7 +3,7 @@ apiVersion: apiextensions.k8s.io/v1
 kind: CustomResourceDefinition
 metadata:
   annotations:
-    controller-gen.kubebuilder.io/version: v0.15.0
+    controller-gen.kubebuilder.io/version: v0.16.2
   name: prompts.ollama.aerf.io
 spec:
   group: ollama.aerf.io
@@ -57,9 +57,13 @@ spec:
           spec:
             description: PromptSpec defines the desired state of Prompt
             properties:
+              context:
+                description: Context is the context returned from previous prompt.
+                  Copy it from .status.context of previously run prompt. Optional
+                  field
+                type: string
               images:
                 items:
-                  description: TODO cel expression that only 1 field should be set
                   properties:
                     configMapKeyRef:
                       description: A ConfigMapKeySelector is a reference to a configmap
@@ -188,13 +192,10 @@ spec:
                 x-kubernetes-list-map-keys:
                 - type
                 x-kubernetes-list-type: map
+              context:
+                type: string
               meta:
                 properties:
-                  context:
-                    items:
-                      format: int64
-                      type: integer
-                    type: array
                   createdAt:
                     format: date-time
                     type: string

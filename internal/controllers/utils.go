@@ -1,4 +1,4 @@
-package controller
+package controllers
 
 import (
 	"k8s.io/apimachinery/pkg/apis/meta/v1/unstructured"
@@ -6,8 +6,7 @@ import (
 )
 
 const (
-	DefaultOllamaPort           = 11434
-	DefaultOllamaContainerImage = "ollama/ollama:0.3.3"
+	DefaultOllamaPort = 11434
 )
 
 func ToUnstructured(obj any) (*unstructured.Unstructured, error) {

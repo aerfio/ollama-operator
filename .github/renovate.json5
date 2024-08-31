@@ -1,0 +1,103 @@
+{
+  "$schema": "https://docs.renovatebot.com/renovate-schema.json",
+  "extends": [
+    "config:recommended",
+    "helpers:pinGitHubActionDigests",
+    "group:allNonMajor"
+  ],
+  "dependencyDashboard": false,
+  "prConcurrentLimit": 0,
+  "prHourlyLimit": 0,
+  // We don't want to separate major and minor upgrades in separate PRs since
+  // we can upgrade them together in a single PR.
+  "separateMajorMinor": false,
+  // We don't want to separate minor patch upgrades in separate PRs since
+  // we can upgrade them together in a single PR.
+  "separateMinorPatch": false,
+  "postUpdateOptions": [
+    "gomodTidy",
+    "gomodUpdateImportPaths"
+  ],
+  "labels": [
+    "automated"
+  ],
+  "vulnerabilityAlerts": {
+    "enabled": true
+  },
+  "osvVulnerabilityAlerts": true,
+  "packageRules": [
+    {
+      "description": "Single PR for all kubernetes dependency updates, as they usually are all linked",
+      "matchDatasources": [
+        "go"
+      ],
+      "groupName": "kubernetes deps",
+      "matchPackageNames": [
+        "k8s.io{/,}**",
+        "sigs.k8s.io{/,}**"
+      ]
+    },
+    {
+      "description": "Group all go version updates",
+      "matchDatasources": [
+        "golang-version"
+      ],
+      "rangeStrategy": "bump",
+      "groupName": "golang version"
+    }
+  ],
+  "customManagers": [
+    {
+      "customType": "regex",
+      "description": "Update `version:` and `_VERSION:` variables in github workflows",
+      "fileMatch": [
+        "^\\.github/workflows/[^/]+\\.ya?ml$"
+      ],
+      "matchStrings": [
+        "\\s+[A-Za-z0-9_]+?-version: (?<currentValue>.+?) # renovate: datasource=(?<datasource>.+?) depName=(?<depName>.+?)(?: (?:packageName|lookupName)=(?<packageName>.+?))?(?: versioning=(?<versioning>.+?))?\\s",
+        "\\s*[A-Z0-9_]+?_VERSION: (?<currentValue>.+?) # renovate: datasource=(?<datasource>.+?) depName=(?<depName>.+?)(?: (?:packageName|lookupName)=(?<packageName>.+?))?(?: versioning=(?<versioning>.+?))?\\s"
+      ]
+    },
+    {
+      // https://docs.renovatebot.com/presets-customManagers/#custommanagersgithubactionsversions
+      "customType": "regex",
+      "fileMatch": [
+        "(^|/)(workflow-templates|\\.(?:github|gitea|forgejo)/(?:workflows|actions))/.+\\.ya?ml$",
+        "(^|/)action\\.ya?ml$"
+      ],
+      "matchStrings": [
+        "# renovate: datasource=(?<datasource>[a-z-.]+?) depName=(?<depName>[^\\s]+?)(?: (?:lookupName|packageName)=(?<packageName>[^\\s]+?))?(?: versioning=(?<versioning>[^\\s]+?))?(?: extractVersion=(?<extractVersion>[^\\s]+?))?\\s+[A-Za-z0-9_]+?_VERSION\\s*:\\s*[\"']?(?<currentValue>.+?)[\"']?\\s"
+      ]
+    },
+    {
+      // https://docs.renovatebot.com/presets-customManagers/#custommanagersmakefileversions
+      "customType": "regex",
+      "fileMatch": [
+        "(^|/)Makefile$",
+        "(^|/)makefile$",
+        "(^|/)GNUMakefile$",
+        "\\.mk$"
+      ],
+      "matchStrings": [
+        "# renovate: datasource=(?<datasource>[a-z-.]+?) depName=(?<depName>[^\\s]+?)(?: (?:packageName)=(?<packageName>[^\\s]+?))?(?: versioning=(?<versioning>[^\\s]+?))?(?: extractVersion=(?<extractVersion>[^\\s]+?))?(?: registryUrl=(?<registryUrl>[^\\s]+?))?\\s+[A-Za-z0-9_]+?_VERSION\\s*:*\\??=\\s*[\"']?(?<currentValue>.+?)[\"']?\\s"
+      ]
+    },
+    {
+      // thanks cilium :*
+      "customType": "regex",
+      "fileMatch": [
+        "\\.go$"
+      ],
+      "matchStrings": [
+        ".+?renovate: datasource=(?<datasource>.*?)\\s+.+Image = \"(?<depName>.*):(?<currentValue>.*)\"",
+        ".+?renovate: datasource=(?<datasource>.*?) depName=(?<depName>.*?)\\s+Version = \"(?<currentValue>.*)\""
+      ]
+    }
+  ],
+  "postUpgradeTasks": {
+    "commands": [
+      "make"
+    ],
+    "executionMode": "branch"
+  }
+}

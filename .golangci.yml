@@ -5,7 +5,6 @@ linters:
   disable-all: true
   enable:
     - durationcheck
-    - exportloopref
     - forcetypeassert
     - gocritic
     - makezero
@@ -61,7 +60,8 @@ linters-settings:
     sections:
       - standard
       - default
-      - prefix(aerf.io/ollama-operator)
+      - localmodule
+      - prefix(aerf.io)
       - blank
       - dot
   gofmt:
@@ -116,6 +116,7 @@ linters-settings:
       - hugeParam
       - paramTypeCombine # automatically fixed by gofumpt
       - typeDefFirst
+      - evalOrder # returns false positives when using "github.com/crossplane/crossplane-runtime/pkg/errors"
   gosec:
     excludes:
       - G108 # Profiling endpoint automatically exposed on /debug/pprof - https://github.com/securego/gosec#available-rules
