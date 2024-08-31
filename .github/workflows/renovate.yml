@@ -11,6 +11,10 @@ name: Renovate
   schedule:
     - cron: "0 8 * * 1"
   pull_request:
+    paths:
+      - ".github/workflows/renovate.yml"
+      - ".github/workflows/validate-renovate-config.yml"
+      - ".github/renovate.json5"
 
 concurrency:
   cancel-in-progress: true
@@ -34,10 +38,13 @@ jobs:
         with:
           APP_PEM: ${{ secrets.GHA_PRIVATE_KEY }}
           APP_ID: ${{ secrets.GHA_APP_ID }}
+      - run: | 
+          echo ${{ github.ref }}
       - name: Self-hosted Renovate
         uses: renovatebot/github-action@630a255a1f2f56c8d8ce160bed3e3ca577ca53e2 # v40.2.7
         env:
           RENOVATE_REPOSITORIES: ${{ github.repository }}
+          RENOVATE_USE_BASE_BRANCH_CONFIG: ${{ github.ref }}
           # Use GitHub API to create commits
           RENOVATE_PLATFORM_COMMIT: "true"
           LOG_LEVEL: ${{ github.event.inputs.logLevel || env.LOG_LEVEL }}
