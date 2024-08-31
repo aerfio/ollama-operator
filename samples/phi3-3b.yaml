@@ -11,3 +11,29 @@ spec:
     limits:
       cpu: 3
       memory: 8Gi
+---
+apiVersion: ollama.aerf.io/v1alpha1
+kind: Prompt
+metadata:
+  name: test
+  namespace: default
+spec:
+  modelRef:
+    namespace: default
+    name: phi3
+  prompt: |
+    Tell me about yourself in 3 sentences max
+---
+#apiVersion: ollama.aerf.io/v1alpha1
+#kind: Prompt
+#metadata:
+#  name: test-2
+#  namespace: default
+#spec:
+# # TODO(user): update this string to whatever is in the status of previous prompt
+#  context: WzMyMDEwLDI5ODcxLDEzLDI5OTExLDUxNCw1OTIsMTA0OCw3NTM1LDI5NywyOTg3MSwyOTk0MSwyNTI2MCw0MjM2LDEzLDMyMDA3LDI5ODcxLDEzLDMyMDAxLDI5ODcxLDEzLDI5OTAyLDI5OTE1LDI5ODg1LDI2MywxMjI0LDI0Mjg1LDMxOSwyOTkwMiw4OTA2LDMwNCw2OTg1LDQxMSw1MTY0LDk1OTUsMzIyLDEyMzQsNTE1NSwyOTg4OSwxNjE5LDI3MTA4LDEwNjM4LDQ4MjIsMTMxMzgsMjQ3MiwyOTg5Miw0MDg2LDEzOTYyLDI5ODkyLDMyMiwxNTg0LDI2MCwzNDA2LDI5Miw4MDQxLDM3MywxNjk4NCwxNzgwMCwyOTg4OSwzMDYsNjI2LDE5MzU1LDMwNCwxMjAyMSwyOTIsMTYyMzIsMjA4OTAsOTUwOCwzNjgsMTU1MCwzMTMzLDU3OTQsNjUwOSw1MTUsMjIwNjAsMzYzLDE2NzEwLDE4ODcyLDI5ODg5XQ==
+#  modelRef:
+#    namespace: default
+#    name: phi3
+#  prompt: |
+#    What was my previous question? Could you repeat what I said?
