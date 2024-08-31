@@ -3,7 +3,7 @@ module aerf.io/ollama-operator
 go 1.23.0
 
 require (
-	github.com/crossplane/crossplane-runtime v1.17.0-rc.1
+	github.com/crossplane/crossplane-runtime v1.17.0
 	github.com/hashicorp/go-cleanhttp v0.5.2
 	github.com/klauspost/compress v1.17.9
 	github.com/ollama/ollama v0.3.8
