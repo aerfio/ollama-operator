@@ -20,6 +20,7 @@ import (
 	"github.com/klauspost/compress/gzip"
 	"github.com/klauspost/compress/zstd"
 	ollamaapi "github.com/ollama/ollama/api"
+	"go.uber.org/multierr"
 	corev1 "k8s.io/api/core/v1"
 	apierrors "k8s.io/apimachinery/pkg/api/errors"
 	metav1 "k8s.io/apimachinery/pkg/apis/meta/v1"
@@ -27,11 +28,9 @@ import (
 	"k8s.io/client-go/tools/record"
 	"k8s.io/utils/ptr"
 	ctrl "sigs.k8s.io/controller-runtime"
-	"sigs.k8s.io/controller-runtime/pkg/builder"
 	"sigs.k8s.io/controller-runtime/pkg/client"
 	"sigs.k8s.io/controller-runtime/pkg/controller"
 	"sigs.k8s.io/controller-runtime/pkg/handler"
-	"sigs.k8s.io/controller-runtime/pkg/predicate"
 	"sigs.k8s.io/controller-runtime/pkg/reconcile"
 	"sigs.k8s.io/controller-runtime/pkg/source"
 	"sigs.k8s.io/yaml"
@@ -43,16 +42,14 @@ type PromptReconciler struct {
 	client                  client.Client
 	recorder                record.EventRecorder
 	baseHTTPClient          *http.Client
-	fieldManager            string
 	maxConcurrentReconciles int
 }
 
 func NewPromptReconciler(cli client.Client, recorder record.EventRecorder, maxConcurrentReconciles int) *PromptReconciler {
 	return &PromptReconciler{
-		client:                  cli,
+		client:                  client.WithFieldOwner(cli, "ollama-operator.prompt-controller"),
 		recorder:                recorder,
 		baseHTTPClient:          cleanhttp.DefaultPooledClient(),
-		fieldManager:            "prompt-controller",
 		maxConcurrentReconciles: maxConcurrentReconciles,
 	}
 }
@@ -69,14 +66,7 @@ func (r *PromptReconciler) ollamaClientForModel(model *ollamav1alpha1.Model) *ol
 // SetupWithManager sets up the controller with the Manager.
 func (r *PromptReconciler) SetupWithManager(mgr ctrl.Manager) error {
 	return ctrl.NewControllerManagedBy(mgr).
-		For(&ollamav1alpha1.Prompt{},
-			builder.WithPredicates(
-				predicate.And(
-					predicate.GenerationChangedPredicate{},
-					predicate.ResourceVersionChangedPredicate{},
-				),
-			),
-		).
+		For(&ollamav1alpha1.Prompt{}).
 		WatchesRawSource(source.Kind(mgr.GetCache(), &ollamav1alpha1.Model{}, handler.TypedEnqueueRequestsFromMapFunc[*ollamav1alpha1.Model](func(ctx context.Context, model *ollamav1alpha1.Model) []reconcile.Request {
 			log := mgr.GetLogger().WithValues("controller", "prompt-controller")
 
@@ -180,6 +170,19 @@ func (r *PromptReconciler) Reconcile(ctx context.Context, prompt *ollamav1alpha1
 		}
 	}
 
+	var specContext []int
+	if prompt.Spec.Context != "" {
+		decoded, err := base64.StdEncoding.DecodeString(prompt.Spec.Context)
+		if err != nil {
+			return ctrl.Result{}, errors.WithMessagef(err, "failed to decode context")
+		}
+		promptCtx := []int{}
+		if err := json.Unmarshal(decoded, &promptCtx); err != nil {
+			return ctrl.Result{}, errors.WithMessagef(err, "failed to unmarshal context into []int")
+		}
+		specContext = promptCtx
+	}
+
 	generateResp := ollamaapi.GenerateResponse{}
 	req := &ollamaapi.GenerateRequest{
 		Model:    referencedModel.Spec.Model,
@@ -187,7 +190,7 @@ func (r *PromptReconciler) Reconcile(ctx context.Context, prompt *ollamav1alpha1
 		Suffix:   prompt.Spec.Suffix,
 		System:   prompt.Spec.System,
 		Template: prompt.Spec.Template,
-		Context:  nil, // todo
+		Context:  specContext,
 		Stream:   ptr.To(false),
 		Raw:      false,
 		Images:   imageData,
@@ -203,9 +206,15 @@ func (r *PromptReconciler) Reconcile(ctx context.Context, prompt *ollamav1alpha1
 
 	log.Info("generatedResponse", "resp", generateResp)
 	// todo handle done, doneReason
+
+	marshalledContext, err := json.Marshal(generateResp.Context)
+	if err != nil {
+		return reconcile.Result{}, err
+	}
+
+	prompt.Status.Context = base64.StdEncoding.EncodeToString(marshalledContext)
 	prompt.Status.Response = strings.TrimSpace(strings.TrimRight(generateResp.Response, " \n"))
 	prompt.Status.PromptResponseMeta = &ollamav1alpha1.PromptResponseMeta{
-		Context:   intToInt64Slice(generateResp.Context),
 		CreatedAt: metav1.NewTime(generateResp.CreatedAt),
 	}
 	prompt.Status.PromptResponseMetrics = &ollamav1alpha1.PromptResponseMetrics{
@@ -222,14 +231,6 @@ func (r *PromptReconciler) Reconcile(ctx context.Context, prompt *ollamav1alpha1
 	prompt.SetConditionsWithObservedGeneration(xpv1.Available())
 
 	return reconcile.Result{}, nil
-}
-
-func intToInt64Slice(in []int) []int64 {
-	out := make([]int64, len(in))
-	for i := range in {
-		out[i] = int64(in[i])
-	}
-	return out
 }
 
 func (r *PromptReconciler) getOptionsFromSpecOptions(prompt *ollamav1alpha1.Prompt) (map[string]any, error) {
@@ -271,6 +272,35 @@ func DecodeBase64Zstd(input []byte) ([]byte, error) {
 	}
 	defer zstdReader.Close()
 	return io.ReadAll(zstdReader)
+}
+
+func Compress(in io.Reader, out io.Writer) error {
+	enc, err := zstd.NewWriter(out)
+	if err != nil {
+		return err
+	}
+	_, err = io.Copy(enc, in)
+	if err != nil {
+		enc.Close()
+		return err
+	}
+	return enc.Close()
+}
+
+func EncodeZstdBase64(input []byte) (out string, err error) {
+	buf := new(bytes.Buffer)
+	bw := base64.NewEncoder(base64.StdEncoding, buf)
+	defer multierr.AppendFunc(&err, bw.Close)
+
+	w, err := zstd.NewWriter(bw)
+	if err != nil {
+		return "", err
+	}
+	defer multierr.AppendFunc(&err, w.Close)
+	if _, err := w.Write(input); err != nil {
+		return "", err
+	}
+	return buf.String(), nil
 }
 
 func imageExtractor(ctx context.Context, cli client.Reader, ref ollamav1alpha1.ImageSource) (ollamav1alpha1.ImageData, error) {

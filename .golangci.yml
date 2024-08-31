@@ -5,7 +5,6 @@ linters:
   disable-all: true
   enable:
     - durationcheck
-    - exportloopref
     - forcetypeassert
     - gocritic
     - makezero

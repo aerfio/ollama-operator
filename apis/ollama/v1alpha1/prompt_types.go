@@ -29,6 +29,8 @@ type PromptSpec struct {
 	ModelRef ModelRef `json:"modelRef"`
 	Prompt   string   `json:"prompt"`
 
+	// Context is the context returned from previous prompt. Copy it from .status.context of previously run prompt. Optional field
+	Context string `json:"context,omitempty"`
 	// Suffix is the text that comes after the inserted text.
 	Suffix string `json:"suffix,omitempty"`
 
@@ -76,12 +78,12 @@ type ModelRef struct {
 type PromptStatus struct {
 	xpv1.ResourceStatus   `json:",inline"`
 	Response              string                 `json:"response,omitempty"`
+	Context               string                 `json:"context,omitempty"`
 	PromptResponseMeta    *PromptResponseMeta    `json:"meta,omitempty"`
 	PromptResponseMetrics *PromptResponseMetrics `json:"metrics,omitempty"`
 }
 
 type PromptResponseMeta struct {
-	Context   []int64     `json:"context,omitempty"`
 	CreatedAt metav1.Time `json:"createdAt,omitempty"`
 }
 

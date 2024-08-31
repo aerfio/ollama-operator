@@ -58,15 +58,13 @@ type ModelReconciler struct {
 	client         client.Client
 	recorder       record.EventRecorder
 	baseHTTPClient *http.Client
-	fieldManager   string
 }
 
 func NewModelReconciler(cli client.Client, recorder record.EventRecorder) *ModelReconciler {
 	return &ModelReconciler{
-		client:         cli,
+		client:         client.WithFieldOwner(cli, "ollama-operator.model-controller"),
 		recorder:       recorder,
 		baseHTTPClient: cleanhttp.DefaultPooledClient(),
-		fieldManager:   "model-controller",
 	}
 }
 
@@ -80,9 +78,7 @@ func (r *ModelReconciler) ollamaClientForModel(model *ollamav1alpha1.Model) *oll
 }
 
 func (r *ModelReconciler) apply(ctx context.Context, obj *unstructured.Unstructured, opts ...client.PatchOption) error {
-	return r.client.Patch(ctx, obj, client.Apply,
-		slices.Concat([]client.PatchOption{client.ForceOwnership, client.FieldOwner(r.fieldManager)}, opts)...,
-	)
+	return r.client.Patch(ctx, obj, client.Apply, append(opts, client.ForceOwnership)...)
 }
 
 func (r *ModelReconciler) eventRecorderFor(obj runtime.Object) *eventrecorder.EventRecorder {
