@@ -86,8 +86,8 @@
         "^internal/defaults/defaults\\.go$"
       ],
       "matchStrings": [
-        "\/\/ renovate: datasource=(?<datasource>.*?)\\s+.+Image = \"(?<depName>.*):(?<currentValue>.*)@(?<currentDigest>sha256:[a-f0-9]+)\"",
-        "\/\/ renovate: datasource=(?<datasource>.*?) depName=(?<depName>.*?)\\s+Version = \"(?<currentValue>.*)\""
+        "\\s*\/\/ renovate: datasource=(?<datasource>.*?)\\s+.+Image = \"(?<depName>.*):(?<currentValue>.*)\"",
+        "\\s*\/\/ renovate: datasource=(?<datasource>.*?) depName=(?<depName>.*?)\\s+Version = \"(?<currentValue>.*)\""
       ]
     }
   ],
