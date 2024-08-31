@@ -51,6 +51,7 @@ import (
 	"sigs.k8s.io/controller-runtime/pkg/reconcile"
 
 	ollamav1alpha1 "aerf.io/ollama-operator/apis/ollama/v1alpha1"
+	"aerf.io/ollama-operator/internal/defaults"
 	"aerf.io/ollama-operator/internal/eventrecorder"
 )
 
@@ -88,7 +89,7 @@ func (r *ModelReconciler) eventRecorderFor(obj runtime.Object) *eventrecorder.Ev
 func (r *ModelReconciler) Reconcile(ctx context.Context, model *ollamav1alpha1.Model) (result ctrl.Result, retErr error) {
 	defer func() {
 		model.Status.ObservedGeneration = model.GetGeneration()
-		model.Status.OllamaImage = cmp.Or(model.Spec.OllamaImage, DefaultOllamaContainerImage)
+		model.Status.OllamaImage = cmp.Or(model.Spec.OllamaImage, defaults.OllamaImage)
 		if retErr != nil {
 			model.SetConditionsWithObservedGeneration(xpv1.ReconcileError(retErr))
 		} else {
@@ -266,7 +267,7 @@ func (r *ModelReconciler) resources(model *ollamav1alpha1.Model) ([]*unstructure
 						WithContainers(
 							applycorev1.Container().
 								WithName("ollama").
-								WithImage(cmp.Or(model.Spec.OllamaImage, DefaultOllamaContainerImage)).
+								WithImage(cmp.Or(model.Spec.OllamaImage, defaults.OllamaImage)).
 								WithImagePullPolicy(corev1.PullIfNotPresent).
 								WithResources(
 									applycorev1.ResourceRequirements().
