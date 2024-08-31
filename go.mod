@@ -3,7 +3,7 @@ module aerf.io/ollama-operator
 go 1.23.0
 
 require (
-	dario.cat/mergo v1.0.0
+	dario.cat/mergo v1.0.1
 	github.com/crossplane/crossplane-runtime v1.17.0
 	github.com/evanphx/json-patch/v5 v5.9.0
 	github.com/google/go-cmp v0.6.0
