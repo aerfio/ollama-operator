@@ -53,6 +53,7 @@ import (
 	ollamav1alpha1 "aerf.io/ollama-operator/apis/ollama/v1alpha1"
 	"aerf.io/ollama-operator/internal/defaults"
 	"aerf.io/ollama-operator/internal/eventrecorder"
+	"aerf.io/ollama-operator/internal/patches"
 )
 
 type ModelReconciler struct {
@@ -108,7 +109,7 @@ func (r *ModelReconciler) Reconcile(ctx context.Context, model *ollamav1alpha1.M
 
 	ollamaCli := r.ollamaClientForModel(model)
 
-	resources, err := r.resources(model)
+	resources, err := ResourcesFromModel(model)
 	if err != nil {
 		return ctrl.Result{}, err
 	}
@@ -232,7 +233,7 @@ func (r *ModelReconciler) setControllerReference(model *ollamav1alpha1.Model, co
 	return ctrl.SetControllerReference(model, controlled, r.client.Scheme())
 }
 
-func (r *ModelReconciler) resources(model *ollamav1alpha1.Model) ([]*unstructured.Unstructured, error) {
+func ResourcesFromModel(model *ollamav1alpha1.Model) ([]*unstructured.Unstructured, error) {
 	labels := map[string]string{
 		"ollama.aerf.io/model": model.GetName(),
 	}
@@ -327,14 +328,24 @@ func (r *ModelReconciler) resources(model *ollamav1alpha1.Model) ([]*unstructure
 				WithSelector(labels),
 		)
 
-	unstructuredSts, err := ToUnstructured(sts)
+	patchedSts, err := patches.Apply(sts, model.Spec.StatefulSet)
 	if err != nil {
 		return nil, err
 	}
-	unstructuredSvc, err := ToUnstructured(svc)
+	patchedSvc, err := patches.Apply(svc, model.Spec.Service)
 	if err != nil {
 		return nil, err
 	}
+
+	unstructuredSts, err := ToUnstructured(patchedSts)
+	if err != nil {
+		return nil, err
+	}
+	unstructuredSvc, err := ToUnstructured(patchedSvc)
+	if err != nil {
+		return nil, err
+	}
+
 	return []*unstructured.Unstructured{
 		unstructuredSts,
 		unstructuredSvc,

@@ -1,0 +1,6 @@
+apiVersion: ollama.aerf.io/v1alpha1
+kind: Model
+metadata:
+  name: gemma2-2b
+spec:
+  model: gemma2:2b

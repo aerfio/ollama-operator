@@ -1,0 +1,19 @@
+apiVersion: ollama.aerf.io/v1alpha1
+kind: Model
+metadata:
+  name: gemma2-2b
+spec:
+  model: gemma2:2b
+  statefulSetPatches:
+    jsonPatch:
+      - op: "add"
+        path: "/metadata/labels/patched"
+        value: "patched-value"
+      - op: "replace"
+        path: "/spec/volumeClaimTemplates/0/spec/resources/requests/storage"
+        value: "30Gi"
+      - op: "add"
+        path: "/spec/template/spec/containers/1"
+        value:
+          name: "test"
+          image: "test:latest"
