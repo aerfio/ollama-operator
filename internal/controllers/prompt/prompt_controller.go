@@ -1,4 +1,4 @@
-package controllers
+package prompt
 
 import (
 	"bytes"
@@ -36,17 +36,18 @@ import (
 	"sigs.k8s.io/yaml"
 
 	ollamav1alpha1 "aerf.io/ollama-operator/apis/ollama/v1alpha1"
+	"aerf.io/ollama-operator/internal/defaults"
 )
 
-type PromptReconciler struct {
+type Reconciler struct {
 	client                  client.Client
 	recorder                record.EventRecorder
 	baseHTTPClient          *http.Client
 	maxConcurrentReconciles int
 }
 
-func NewPromptReconciler(cli client.Client, recorder record.EventRecorder, maxConcurrentReconciles int) *PromptReconciler {
-	return &PromptReconciler{
+func NewReconciler(cli client.Client, recorder record.EventRecorder, maxConcurrentReconciles int) *Reconciler {
+	return &Reconciler{
 		client:                  client.WithFieldOwner(cli, "ollama-operator.prompt-controller"),
 		recorder:                recorder,
 		baseHTTPClient:          cleanhttp.DefaultPooledClient(),
@@ -54,17 +55,17 @@ func NewPromptReconciler(cli client.Client, recorder record.EventRecorder, maxCo
 	}
 }
 
-func (r *PromptReconciler) ollamaClientForModel(model *ollamav1alpha1.Model) *ollamaapi.Client {
+func (r *Reconciler) ollamaClientForModel(model *ollamav1alpha1.Model) *ollamaapi.Client {
 	u := &url.URL{
 		Scheme: "http",
-		Host:   net.JoinHostPort(fmt.Sprintf("%s.%s.svc.cluster.local", model.GetName(), model.GetNamespace()), strconv.Itoa(DefaultOllamaPort)),
+		Host:   net.JoinHostPort(fmt.Sprintf("%s.%s.svc.cluster.local", model.GetName(), model.GetNamespace()), strconv.Itoa(defaults.OllamaPort)),
 	}
 
 	return ollamaapi.NewClient(u, r.baseHTTPClient)
 }
 
 // SetupWithManager sets up the controller with the Manager.
-func (r *PromptReconciler) SetupWithManager(mgr ctrl.Manager) error {
+func (r *Reconciler) SetupWithManager(mgr ctrl.Manager) error {
 	return ctrl.NewControllerManagedBy(mgr).
 		For(&ollamav1alpha1.Prompt{}).
 		WatchesRawSource(source.Kind(mgr.GetCache(), &ollamav1alpha1.Model{}, handler.TypedEnqueueRequestsFromMapFunc[*ollamav1alpha1.Model](func(ctx context.Context, model *ollamav1alpha1.Model) []reconcile.Request {
@@ -99,7 +100,7 @@ func (r *PromptReconciler) SetupWithManager(mgr ctrl.Manager) error {
 		)
 }
 
-func (r *PromptReconciler) Reconcile(ctx context.Context, prompt *ollamav1alpha1.Prompt) (result ctrl.Result, retErr error) {
+func (r *Reconciler) Reconcile(ctx context.Context, prompt *ollamav1alpha1.Prompt) (result ctrl.Result, retErr error) {
 	defer func() {
 		prompt.Status.ObservedGeneration = prompt.GetGeneration()
 		if retErr != nil {
@@ -233,7 +234,7 @@ func (r *PromptReconciler) Reconcile(ctx context.Context, prompt *ollamav1alpha1
 	return reconcile.Result{}, nil
 }
 
-func (r *PromptReconciler) getOptionsFromSpecOptions(prompt *ollamav1alpha1.Prompt) (map[string]any, error) {
+func (r *Reconciler) getOptionsFromSpecOptions(prompt *ollamav1alpha1.Prompt) (map[string]any, error) {
 	raw := prompt.Spec.Options.Raw
 	if len(raw) == 0 {
 		return nil, nil

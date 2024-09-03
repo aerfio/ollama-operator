@@ -36,7 +36,8 @@ import (
 	"sigs.k8s.io/controller-runtime/pkg/webhook"
 
 	ollamav1alpha1 "aerf.io/ollama-operator/apis/ollama/v1alpha1"
-	"aerf.io/ollama-operator/internal/controllers"
+	"aerf.io/ollama-operator/internal/controllers/model"
+	"aerf.io/ollama-operator/internal/controllers/prompt"
 
 	_ "k8s.io/client-go/plugin/pkg/client/auth"
 )
@@ -159,11 +160,11 @@ func main() {
 		os.Exit(1)
 	}
 
-	if err = controllers.NewModelReconciler(mgr.GetClient(), mgr.GetEventRecorderFor("model-controller")).SetupWithManager(mgr); err != nil {
+	if err = model.NewReconciler(mgr.GetClient(), mgr.GetEventRecorderFor("model-controller")).SetupWithManager(mgr); err != nil {
 		setupLog.Error(err, "unable to create controller", "controller", "Model")
 		os.Exit(1)
 	}
-	if err = controllers.NewPromptReconciler(
+	if err = prompt.NewReconciler(
 		mgr.GetClient(),
 		mgr.GetEventRecorderFor("prompt-controller"),
 		promptControllerMaxConcurrentReconciles,

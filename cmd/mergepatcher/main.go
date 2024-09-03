@@ -1,17 +1,16 @@
 package main
 
 import (
-	"bytes"
 	"cmp"
 	"fmt"
+	"strings"
 
 	"github.com/alecthomas/kong"
 	"k8s.io/apimachinery/pkg/apis/meta/v1/unstructured"
-	"k8s.io/apimachinery/pkg/runtime"
 	"sigs.k8s.io/yaml"
 
 	ollamav1alpha1 "aerf.io/ollama-operator/apis/ollama/v1alpha1"
-	"aerf.io/ollama-operator/internal/controllers"
+	modelcontroller "aerf.io/ollama-operator/internal/controllers/model"
 )
 
 var cli struct {
@@ -32,25 +31,26 @@ func main() {
 	kctx.FatalIfErrorf(yaml.Unmarshal(cli.File, unstr), "unable to unmarshal file content to %T", unstr)
 
 	model := &ollamav1alpha1.Model{}
-	kctx.FatalIfErrorf(runtime.DefaultUnstructuredConverter.FromUnstructuredWithValidation(unstr.Object, model, true), "unable to unmarshal file content to %T", model)
+	err := yaml.UnmarshalStrict(cli.File, model)
+	kctx.FatalIfErrorf(err, "unable to unmarshal file content to %T", model)
 
 	model.Namespace = cmp.Or(model.Namespace, "default")
 
-	res, err := controllers.ResourcesFromModel(model)
+	res, err := modelcontroller.Resources(model)
 	kctx.FatalIfErrorf(err, "unable to create resource out of model instance")
 	kctx.FatalIfErrorf(printObjects(res), "unable to print child objects")
 }
 
 func printObjects(objs []*unstructured.Unstructured) error {
-	buf := make([][]byte, 0)
+	buf := make([]string, 0)
 	for _, obj := range objs {
 		out, err := yaml.Marshal(obj)
 		if err != nil {
 			return err
 		}
-		buf = append(buf, out)
+		buf = append(buf, string(out))
 	}
 
-	fmt.Println(string(bytes.TrimSuffix(bytes.Join(buf, []byte("---\n")), []byte("\n"))))
+	fmt.Println(strings.TrimSuffix(strings.Join(buf, "---\n"), "\n"))
 	return nil
 }

@@ -14,7 +14,7 @@ See the License for the specific language governing permissions and
 limitations under the License.
 */
 
-package controllers
+package model
 
 import (
 	"cmp"
@@ -54,40 +54,42 @@ import (
 	"aerf.io/ollama-operator/internal/defaults"
 	"aerf.io/ollama-operator/internal/eventrecorder"
 	"aerf.io/ollama-operator/internal/patches"
+
+	"aerf.io/k8sutils"
 )
 
-type ModelReconciler struct {
+type Reconciler struct {
 	client         client.Client
 	recorder       record.EventRecorder
 	baseHTTPClient *http.Client
 }
 
-func NewModelReconciler(cli client.Client, recorder record.EventRecorder) *ModelReconciler {
-	return &ModelReconciler{
+func NewReconciler(cli client.Client, recorder record.EventRecorder) *Reconciler {
+	return &Reconciler{
 		client:         client.WithFieldOwner(cli, "ollama-operator.model-controller"),
 		recorder:       recorder,
 		baseHTTPClient: cleanhttp.DefaultPooledClient(),
 	}
 }
 
-func (r *ModelReconciler) ollamaClientForModel(model *ollamav1alpha1.Model) *ollamaapi.Client {
+func (r *Reconciler) ollamaClientForModel(model *ollamav1alpha1.Model) *ollamaapi.Client {
 	u := &url.URL{
 		Scheme: "http",
-		Host:   net.JoinHostPort(fmt.Sprintf("%s.%s.svc.cluster.local", model.GetName(), model.GetNamespace()), strconv.Itoa(DefaultOllamaPort)),
+		Host:   net.JoinHostPort(fmt.Sprintf("%s.%s.svc.cluster.local", model.GetName(), model.GetNamespace()), strconv.Itoa(defaults.OllamaPort)),
 	}
 
 	return ollamaapi.NewClient(u, r.baseHTTPClient)
 }
 
-func (r *ModelReconciler) apply(ctx context.Context, obj *unstructured.Unstructured, opts ...client.PatchOption) error {
+func (r *Reconciler) apply(ctx context.Context, obj *unstructured.Unstructured, opts ...client.PatchOption) error {
 	return r.client.Patch(ctx, obj, client.Apply, append(opts, client.ForceOwnership)...)
 }
 
-func (r *ModelReconciler) eventRecorderFor(obj runtime.Object) *eventrecorder.EventRecorder {
+func (r *Reconciler) eventRecorderFor(obj runtime.Object) *eventrecorder.EventRecorder {
 	return eventrecorder.New(r.recorder, obj)
 }
 
-func (r *ModelReconciler) Reconcile(ctx context.Context, model *ollamav1alpha1.Model) (result ctrl.Result, retErr error) {
+func (r *Reconciler) Reconcile(ctx context.Context, model *ollamav1alpha1.Model) (result ctrl.Result, retErr error) {
 	defer func() {
 		model.Status.ObservedGeneration = model.GetGeneration()
 		model.Status.OllamaImage = cmp.Or(model.Spec.OllamaImage, defaults.OllamaImage)
@@ -109,7 +111,7 @@ func (r *ModelReconciler) Reconcile(ctx context.Context, model *ollamav1alpha1.M
 
 	ollamaCli := r.ollamaClientForModel(model)
 
-	resources, err := ResourcesFromModel(model)
+	resources, err := Resources(model)
 	if err != nil {
 		return ctrl.Result{}, err
 	}
@@ -217,7 +219,7 @@ func isStatefulSetReady(sts *appsv1.StatefulSet) (string, bool, error) {
 }
 
 // SetupWithManager sets up the controller with the Manager.
-func (r *ModelReconciler) SetupWithManager(mgr ctrl.Manager) error {
+func (r *Reconciler) SetupWithManager(mgr ctrl.Manager) error {
 	return ctrl.NewControllerManagedBy(mgr).
 		For(&ollamav1alpha1.Model{}).
 		Owns(&appsv1.StatefulSet{}).
@@ -229,11 +231,11 @@ func (r *ModelReconciler) SetupWithManager(mgr ctrl.Manager) error {
 		)
 }
 
-func (r *ModelReconciler) setControllerReference(model *ollamav1alpha1.Model, controlled metav1.Object) error {
+func (r *Reconciler) setControllerReference(model *ollamav1alpha1.Model, controlled metav1.Object) error {
 	return ctrl.SetControllerReference(model, controlled, r.client.Scheme())
 }
 
-func ResourcesFromModel(model *ollamav1alpha1.Model) ([]*unstructured.Unstructured, error) {
+func Resources(model *ollamav1alpha1.Model) ([]*unstructured.Unstructured, error) {
 	labels := map[string]string{
 		"ollama.aerf.io/model": model.GetName(),
 	}
@@ -273,7 +275,7 @@ func ResourcesFromModel(model *ollamav1alpha1.Model) ([]*unstructured.Unstructur
 								WithPorts(
 									applycorev1.ContainerPort().
 										WithName(httpAPIPortName).
-										WithContainerPort(DefaultOllamaPort).
+										WithContainerPort(defaults.OllamaPort).
 										WithProtocol(corev1.ProtocolTCP),
 								).
 								WithEnv(
@@ -299,7 +301,7 @@ func ResourcesFromModel(model *ollamav1alpha1.Model) ([]*unstructured.Unstructur
 									WithPeriodSeconds(5).
 									WithHTTPGet(
 										applycorev1.HTTPGetAction().
-											WithPort(intstr.FromInt32(DefaultOllamaPort)).
+											WithPort(intstr.FromInt32(defaults.OllamaPort)).
 											WithPath("/"),
 									),
 								).
@@ -322,7 +324,7 @@ func ResourcesFromModel(model *ollamav1alpha1.Model) ([]*unstructured.Unstructur
 					applycorev1.ServicePort().
 						WithName("http-api").
 						WithTargetPort(intstr.FromString(httpAPIPortName)).
-						WithPort(DefaultOllamaPort).
+						WithPort(defaults.OllamaPort).
 						WithProtocol(corev1.ProtocolTCP),
 				).
 				WithSelector(labels),
@@ -337,11 +339,11 @@ func ResourcesFromModel(model *ollamav1alpha1.Model) ([]*unstructured.Unstructur
 		return nil, err
 	}
 
-	unstructuredSts, err := ToUnstructured(patchedSts)
+	unstructuredSts, err := k8sutils.ToUnstructured(patchedSts)
 	if err != nil {
 		return nil, err
 	}
-	unstructuredSvc, err := ToUnstructured(patchedSvc)
+	unstructuredSvc, err := k8sutils.ToUnstructured(patchedSvc)
 	if err != nil {
 		return nil, err
 	}
