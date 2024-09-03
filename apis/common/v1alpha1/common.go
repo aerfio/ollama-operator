@@ -27,13 +27,14 @@ type ConfigMapKeySelector struct {
 }
 
 type Patches struct {
-	JSONPatch  `json:",inline"`
-	MergePatch `json:",inline"`
+	JSONPatch           `json:",inline"`
+	MergePatch          `json:",inline"`
+	StrategicMergePatch `json:",inline"`
 }
 
 type JSONPatch struct {
 	// JSON Patch: https://datatracker.ietf.org/doc/html/rfc6902
-	Patch []JSONPatchOperation `json:"jsonPatch,omitempty"`
+	JSONPatch []JSONPatchOperation `json:"jsonPatch,omitempty"`
 }
 
 // https://datatracker.ietf.org/doc/html/rfc6902
@@ -49,17 +50,24 @@ type JSONPatchOperation struct {
 
 type MergePatch struct {
 	// JSON Merge Patch: https://datatracker.ietf.org/doc/html/rfc7386.
-	// Note that as per RFC "it is not possible to patch part of a target that is not an object, such as to replace just some of the values in an array.". Use JSON Patch for that.
+	// Note that as per RFC "it is not possible to patch part of a target that is not an object, such as to replace just some of the values in an array.". Use JSON MergePatch for that.
 	// +kubebuilder:pruning:PreserveUnknownFields
-	Patch *runtime.RawExtension `json:"mergePatch,omitempty"`
+	MergePatch *runtime.RawExtension `json:"mergePatch,omitempty"`
+}
+
+type StrategicMergePatch struct {
+	// Strategic Merge Patch:
+	// - https://github.com/kubernetes/community/blob/master/contributors/devel/sig-api-machinery/strategic-merge-patch.md
+	// - https://kubernetes.io/docs/tasks/manage-kubernetes-objects/update-api-object-kubectl-patch/#use-a-strategic-merge-patch-to-update-a-deployment
+	StrategicMergePatch *runtime.RawExtension `json:"strategicMergePatch,omitempty"`
 }
 
 func (mp *MergePatch) PatchToUnstructured() (*unstructured.Unstructured, error) {
-	if mp.Patch == nil {
+	if mp.MergePatch == nil {
 		return nil, fmt.Errorf("patch is nil")
 	}
 	var err error
 	unstr := &unstructured.Unstructured{}
-	unstr.Object, err = runtime.DefaultUnstructuredConverter.ToUnstructured(mp.Patch)
+	unstr.Object, err = runtime.DefaultUnstructuredConverter.ToUnstructured(mp.MergePatch)
 	return unstr, errors.Wrap(err, "failed to convert patch to unstructured")
 }

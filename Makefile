@@ -8,7 +8,7 @@ SHELL = /usr/bin/env bash -o pipefail
 .SHELLFLAGS = -ec
 
 .PHONY: all
-all: generate build manifests test lint-fix
+all: generate build test lint-fix
 
 ##@ General
 

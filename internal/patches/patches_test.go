@@ -255,7 +255,7 @@ status: {}
 `,
 			patches: &cmnv1alpha1.Patches{
 				JSONPatch: cmnv1alpha1.JSONPatch{
-					Patch: []cmnv1alpha1.JSONPatchOperation{
+					JSONPatch: []cmnv1alpha1.JSONPatchOperation{
 						{
 							Op:    "add",
 							Path:  "/metadata/labels/app",
@@ -264,7 +264,7 @@ status: {}
 					},
 				},
 				MergePatch: cmnv1alpha1.MergePatch{
-					Patch: &runtime.RawExtension{Raw: []byte(`{"spec":{"dnsPolicy": "ClusterFirstWithHostNet"}}`)},
+					MergePatch: &runtime.RawExtension{Raw: []byte(`{"spec":{"dnsPolicy": "ClusterFirstWithHostNet"}}`)},
 				},
 			},
 			want: `apiVersion: v1
