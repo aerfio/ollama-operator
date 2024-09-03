@@ -18,8 +18,9 @@ package v1alpha1
 
 import (
 	xpv1 "github.com/crossplane/crossplane-runtime/apis/common/v1"
-	corev1 "k8s.io/api/core/v1"
 	metav1 "k8s.io/apimachinery/pkg/apis/meta/v1"
+
+	cmnv1alpha1 "aerf.io/ollama-operator/apis/common/v1alpha1"
 )
 
 // ModelSpec defines the desired state of Model
@@ -28,8 +29,9 @@ type ModelSpec struct {
 	OllamaImage string `json:"ollamaImage,omitempty"`
 
 	// Model like phi3, llama3.1 etc
-	Model     string                      `json:"model"`
-	Resources corev1.ResourceRequirements `json:"resources,omitempty"`
+	Model       string               `json:"model"`
+	StatefulSet *cmnv1alpha1.Patches `json:"statefulSetPatches,omitempty"`
+	Service     *cmnv1alpha1.Patches `json:"servicePatches,omitempty"`
 }
 
 // ModelStatus defines the observed state of Model

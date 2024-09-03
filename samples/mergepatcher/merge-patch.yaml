@@ -1,0 +1,23 @@
+apiVersion: ollama.aerf.io/v1alpha1
+kind: Model
+metadata:
+  name: gemma2-2b
+spec:
+  model: gemma2:2b
+  statefulSetPatches:
+    mergePatch:
+      metadata:
+        annotations:
+          test1: test2
+      spec:
+        replicas: 3
+        someField: 123
+        template:
+          spec:
+            containers:
+              # yeah, it overrides this array element without merging using `name` field, that's how merge patch works unfortunately, see RFC
+              - name: ollama
+                resources:
+                  limits:
+                    cpu: 50
+                    memory: 50Gi

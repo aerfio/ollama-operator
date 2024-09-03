@@ -8,7 +8,7 @@ SHELL = /usr/bin/env bash -o pipefail
 .SHELLFLAGS = -ec
 
 .PHONY: all
-all: build
+all: generate build manifests test lint-fix
 
 ##@ General
 
@@ -52,11 +52,21 @@ lint: golangci-lint ## Run golangci-lint linter
 lint-fix: golangci-lint ## Run golangci-lint linter and perform fixes
 	$(GOLANGCI_LINT) run --fix
 
+.PHONY: fmt
+fmt: ${GOLANGCI_LINT}
+	$(GOLANGCI_LINT) run --fix --enable-only gci,gofumpt ./...
+
 ##@ Build
 
 .PHONY: build
-build: manifests generate-deep-copy ## Build manager binary.
-	go build -o bin/operator cmd/operator/main.go
+build:
+	@for dir in ./cmd/*; do \
+		if [ -d "$$dir" ]; then \
+			bin_name=$$(basename "$$dir"); \
+			echo "Building $$bin_name..."; \
+			go build -o "./bin/$$bin_name" "$$dir"; \
+		fi \
+	done
 
 .PHONY: container-build
 container-build: $(KO) ## Build docker image with the manager.
