@@ -243,6 +243,43 @@ spec:
                 type: integer
               ollamaImage:
                 type: string
+              patches:
+                properties:
+                  servicePatches:
+                    items:
+                      properties:
+                        op:
+                          type: string
+                        path:
+                          type: string
+                        value:
+                          anyOf:
+                          - type: integer
+                          - type: string
+                          x-kubernetes-int-or-string: true
+                      required:
+                      - op
+                      - path
+                      type: object
+                    type: array
+                  statefulSetPatches:
+                    items:
+                      properties:
+                        op:
+                          type: string
+                        path:
+                          type: string
+                        value:
+                          anyOf:
+                          - type: integer
+                          - type: string
+                          x-kubernetes-int-or-string: true
+                      required:
+                      - op
+                      - path
+                      type: object
+                    type: array
+                type: object
             type: object
         type: object
     served: true

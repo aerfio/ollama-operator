@@ -19,6 +19,7 @@ package model
 import (
 	"cmp"
 	"context"
+	"encoding/json"
 	"fmt"
 	"net"
 	"net/http"
@@ -32,6 +33,7 @@ import (
 	"github.com/crossplane/crossplane-runtime/pkg/errors"
 	"github.com/hashicorp/go-cleanhttp"
 	ollamaapi "github.com/ollama/ollama/api"
+	jsonpatchv2 "gomodules.xyz/jsonpatch/v2"
 	appsv1 "k8s.io/api/apps/v1"
 	corev1 "k8s.io/api/core/v1"
 	apierrors "k8s.io/apimachinery/pkg/api/errors"
@@ -89,6 +91,68 @@ func (r *Reconciler) eventRecorderFor(obj runtime.Object) *eventrecorder.EventRe
 	return eventrecorder.New(r.recorder, obj)
 }
 
+func modelWithoutPatches(model *ollamav1alpha1.Model) *ollamav1alpha1.Model {
+	mdl := model.DeepCopy()
+	mdl.Spec.Service = nil
+	mdl.Spec.StatefulSet = nil
+	return mdl
+}
+
+func getStatus(model *ollamav1alpha1.Model, resource string) ([]ollamav1alpha1.StatusPatchOperation, error) {
+	resources, err := Resources(model)
+	if err != nil {
+		return nil, err
+	}
+
+	noPatchesResources, err := Resources(modelWithoutPatches(model))
+	if err != nil {
+		return nil, err
+	}
+
+	var (
+		patchedResource   *unstructured.Unstructured
+		unpatchedResource *unstructured.Unstructured
+	)
+	switch resource {
+	// shit fn api, update it later
+	case "statefulset":
+		patchedResource = resources[0]
+		unpatchedResource = noPatchesResources[0]
+	case "service":
+		patchedResource = resources[1]
+		unpatchedResource = noPatchesResources[1]
+	default:
+		panic(fmt.Sprintf("unknown resource: %s", resource))
+	}
+
+	marshalledResource, err := json.Marshal(patchedResource)
+	if err != nil {
+		return nil, err
+	}
+	marshalledNoPatches, err := json.Marshal(unpatchedResource)
+	if err != nil {
+		return nil, err
+	}
+
+	ops, err := jsonpatchv2.CreatePatch(marshalledNoPatches, marshalledResource)
+	if err != nil {
+		return nil, err
+	}
+
+	marshalledOps, err := json.Marshal(ops)
+	if err != nil {
+		return nil, err
+	}
+	ollamaOperations := []ollamav1alpha1.StatusPatchOperation{}
+	if err := json.Unmarshal(marshalledOps, &ollamaOperations); err != nil {
+		return nil, err
+	}
+	if len(ollamaOperations) > 0 {
+		return ollamaOperations, nil
+	}
+	return nil, nil
+}
+
 func (r *Reconciler) Reconcile(ctx context.Context, model *ollamav1alpha1.Model) (result ctrl.Result, retErr error) {
 	defer func() {
 		model.Status.ObservedGeneration = model.GetGeneration()
@@ -101,6 +165,7 @@ func (r *Reconciler) Reconcile(ctx context.Context, model *ollamav1alpha1.Model)
 
 		patchErr := r.client.Status().Update(ctx, model)
 		if patchErr != nil {
+			result = ctrl.Result{}
 			retErr = errors.Join(retErr, patchErr)
 		}
 	}()
@@ -114,6 +179,25 @@ func (r *Reconciler) Reconcile(ctx context.Context, model *ollamav1alpha1.Model)
 	resources, err := Resources(model)
 	if err != nil {
 		return ctrl.Result{}, err
+	}
+
+	stsPatchOps, err := getStatus(model, "statefulset")
+	if err != nil {
+		return ctrl.Result{}, err
+	}
+	svcPatchOps, err := getStatus(model, "service")
+	if err != nil {
+		return ctrl.Result{}, err
+	}
+	if len(stsPatchOps) == 0 && len(svcPatchOps) == 0 {
+		model.Status.Patches = nil
+	} else {
+		model.Status.Patches = &ollamav1alpha1.ModelStatusPatchedResources{
+			StatefulSetPatches: stsPatchOps,
+			ServicePatches:     svcPatchOps,
+		}
+
+		log.Info("patches", "status", model.Status)
 	}
 
 	for i := range resources {

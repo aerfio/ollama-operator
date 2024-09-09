@@ -4,3 +4,15 @@ metadata:
   name: gemma2-2b
 spec:
   model: gemma2:2b
+  statefulSetPatches:
+    mergePatch:
+      spec:
+        revisionHistoryLimit: 1
+    strategicMergePatch:
+      spec:
+        template:
+          spec:
+            containers:
+              - name: ollama
+                livenessProbe:
+                  failureThreshold: 5

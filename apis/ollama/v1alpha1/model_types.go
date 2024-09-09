@@ -19,6 +19,7 @@ package v1alpha1
 import (
 	xpv1 "github.com/crossplane/crossplane-runtime/apis/common/v1"
 	metav1 "k8s.io/apimachinery/pkg/apis/meta/v1"
+	"k8s.io/apimachinery/pkg/util/intstr"
 
 	cmnv1alpha1 "aerf.io/ollama-operator/apis/common/v1alpha1"
 )
@@ -37,9 +38,22 @@ type ModelSpec struct {
 // ModelStatus defines the observed state of Model
 type ModelStatus struct {
 	xpv1.ResourceStatus `json:",inline"`
-	OllamaImage         string              `json:"ollamaImage,omitempty"`
-	OllamaModelDetails  *OllamaModelDetails `json:"modelDetails,omitempty"`
-	ObservedGeneration  int64               `json:"observedGeneration,omitempty"`
+	OllamaImage         string                       `json:"ollamaImage,omitempty"`
+	OllamaModelDetails  *OllamaModelDetails          `json:"modelDetails,omitempty"`
+	ObservedGeneration  int64                        `json:"observedGeneration,omitempty"`
+	Patches             *ModelStatusPatchedResources `json:"patches,omitempty"`
+}
+
+type ModelStatusPatchedResources struct {
+	StatefulSetPatches []StatusPatchOperation `json:"statefulSetPatches,omitempty"`
+	ServicePatches     []StatusPatchOperation `json:"servicePatches,omitempty"`
+}
+
+type StatusPatchOperation struct {
+	Op   string `json:"op"`
+	Path string `json:"path"`
+
+	Value *intstr.IntOrString `json:"value,omitempty"`
 }
 
 type OllamaModelDetails struct {

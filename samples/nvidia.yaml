@@ -1,0 +1,28 @@
+# https://github.com/ollama/ollama/blob/main/examples/kubernetes/gpu.yaml
+apiVersion: ollama.aerf.io/v1alpha1
+kind: Model
+metadata:
+  name: nvidia
+spec:
+  model: gemma2:2b
+  statefulSetPatches:
+    strategicMergePatch:
+      spec:
+        template:
+          spec:
+            tolerations:
+              - key: nvidia.com/gpu
+                operator: Exists
+                effect: NoSchedule
+            containers:
+              - name: ollama
+                env:
+                  - name: PATH
+                    value: /usr/local/nvidia/bin:/usr/local/cuda/bin:/usr/local/sbin:/usr/local/bin:/usr/sbin:/usr/bin:/sbin:/bin
+                  - name: LD_LIBRARY_PATH
+                    value: /usr/local/nvidia/lib:/usr/local/nvidia/lib64
+                  - name: NVIDIA_DRIVER_CAPABILITIES
+                    value: compute,utility
+                resources:
+                  limits:
+                    nvidia.com/gpu: 1
