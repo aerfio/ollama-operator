@@ -8,11 +8,3 @@ spec:
     mergePatch:
       spec:
         revisionHistoryLimit: 1
-    strategicMergePatch:
-      spec:
-        template:
-          spec:
-            containers:
-              - name: ollama
-                livenessProbe:
-                  failureThreshold: 5
