@@ -16,7 +16,6 @@ spec:
           spec:
             containers:
               # yeah, it overrides this array element without merging using `name` field, that's how merge patch works unfortunately, see RFC
-              # use strategic merge patch if you want merge by key
               - name: ollama
                 resources:
                   limits:
