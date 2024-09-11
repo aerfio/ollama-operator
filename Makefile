@@ -42,6 +42,7 @@ generate-deep-copy: controller-gen ## Generate code containing DeepCopy, DeepCop
 
 .PHONY: test
 test: manifests generate-deep-copy envtest gotestsum ## Run tests.
+	env
 	KUBEBUILDER_ASSETS="$(shell $(ENVTEST) use $(ENVTEST_K8S_VERSION) --bin-dir $(LOCALBIN) -p path)" $(GOTESTSUM) --format testdox --format-hide-empty-pkg  --format-icons hivis -- -race ./...
 
 .PHONY: lint
