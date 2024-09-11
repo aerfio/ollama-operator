@@ -41,8 +41,8 @@ generate-deep-copy: controller-gen ## Generate code containing DeepCopy, DeepCop
 	$(CONTROLLER_GEN) object paths="./..."
 
 .PHONY: test
-test: manifests generate-deep-copy envtest ## Run tests.
-	KUBEBUILDER_ASSETS="$(shell $(ENVTEST) use $(ENVTEST_K8S_VERSION) --bin-dir $(LOCALBIN) -p path)" go test $$(go list ./... | grep -v /e2e) -coverprofile cover.out -race
+test: manifests generate-deep-copy envtest gotestsum ## Run tests.
+	KUBEBUILDER_ASSETS="$(shell $(ENVTEST) use $(ENVTEST_K8S_VERSION) --bin-dir $(LOCALBIN) -p path)" $(GOTESTSUM) --format testdox --format-hide-empty-pkg  --format-icons hivis -- -race ./...
 
 .PHONY: lint
 lint: golangci-lint ## Run golangci-lint linter
@@ -84,6 +84,7 @@ CONTROLLER_GEN ?= $(LOCALBIN)/controller-gen
 ENVTEST ?= $(LOCALBIN)/setup-envtest
 GOLANGCI_LINT = $(LOCALBIN)/golangci-lint
 KO = $(LOCALBIN)/ko
+GOTESTSUM = $(LOCALBIN)/gotestsum
 
 ## Tool Versions
 
@@ -94,6 +95,8 @@ ENVTEST_VERSION ?= release-0.18
 GOLANGCI_LINT_VERSION ?= v1.60.3
 # renovate: datasource=github-releases depName=ko-build/ko
 KO_VERSION ?= v0.16.0
+# renovate: datasource=github-releases depName=gotestyourself/gotestsum
+GOTESTSUM_VERSION ?= v1.12.0
 
 .PHONY: controller-gen
 controller-gen: $(CONTROLLER_GEN) ## Download controller-gen locally if necessary.
@@ -114,6 +117,11 @@ $(GOLANGCI_LINT): $(LOCALBIN)
 ko: $(KO)
 $(KO): $(LOCALBIN)
 	$(call go-install-tool,$(KO),github.com/google/ko,$(KO_VERSION))
+
+.PHONY: gotestsum
+gotestsum: $(GOTESTSUM)
+$(GOTESTSUM): $(LOCALBIN)
+	$(call go-install-tool,$(GOTESTSUM),gotest.tools/gotestsum,$(GOTESTSUM_VERSION))
 
 # go-install-tool will 'go install' any package with custom target and name of binary, if it doesn't exist
 # $1 - target path with name of binary
