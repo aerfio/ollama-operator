@@ -8,7 +8,7 @@ SHELL = /usr/bin/env bash -o pipefail
 .SHELLFLAGS = -ec
 
 .PHONY: all
-all: generate build manifests test lint-fix
+all: generate build test lint-fix
 
 ##@ General
 
@@ -59,7 +59,7 @@ fmt: ${GOLANGCI_LINT}
 ##@ Build
 
 .PHONY: build
-build:
+build: generate-deep-copy
 	@for dir in ./cmd/*; do \
 		if [ -d "$$dir" ]; then \
 			bin_name=$$(basename "$$dir"); \

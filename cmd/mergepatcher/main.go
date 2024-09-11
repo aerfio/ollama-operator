@@ -6,6 +6,7 @@ import (
 	"strings"
 
 	"github.com/alecthomas/kong"
+	gocmp "github.com/google/go-cmp/cmp"
 	"k8s.io/apimachinery/pkg/apis/meta/v1/unstructured"
 	"sigs.k8s.io/yaml"
 
@@ -14,7 +15,8 @@ import (
 )
 
 var cli struct {
-	File []byte `arg:"" type:"filecontent" help:"input yaml/json with Model CR. Accepts file piped to this binary if '-' is passed as argument"`
+	File     []byte `arg:"" type:"filecontent" help:"input yaml/json with Model CR. Accepts file piped to this binary if '-' is passed as argument"`
+	OnlyDiff bool   `help:"Print only diff after applying patches"`
 }
 
 func main() {
@@ -36,13 +38,28 @@ func main() {
 
 	model.Namespace = cmp.Or(model.Namespace, "default")
 
-	res, err := modelcontroller.Resources(model)
-	kctx.FatalIfErrorf(err, "unable to create resource out of model instance")
-	kctx.FatalIfErrorf(printObjects(res), "unable to print child objects")
+	if cli.OnlyDiff {
+		modelNoPatches := model.DeepCopy()
+		modelNoPatches.Spec.Service = nil
+		modelNoPatches.Spec.StatefulSet = nil
+
+		noPatchesResources, err := modelcontroller.Resources(modelNoPatches)
+		kctx.FatalIfErrorf(err, "unable to create resources out of model instance")
+
+		resources, err := modelcontroller.Resources(model)
+		kctx.FatalIfErrorf(err, "unable to create resources out of model instance")
+
+		fmt.Println(gocmp.Diff(noPatchesResources, resources))
+
+	} else {
+		res, err := modelcontroller.Resources(model)
+		kctx.FatalIfErrorf(err, "unable to create resource out of model instance")
+		kctx.FatalIfErrorf(printObjects(res), "unable to print child objects")
+	}
 }
 
 func printObjects(objs []*unstructured.Unstructured) error {
-	buf := make([]string, 0)
+	buf := make([]string, 0, len(objs))
 	for _, obj := range objs {
 		out, err := yaml.Marshal(obj)
 		if err != nil {

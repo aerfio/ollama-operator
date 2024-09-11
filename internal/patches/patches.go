@@ -26,11 +26,12 @@ func Apply(resource any, patches *cmnv1alpha1.Patches) (any, error) {
 	if err != nil {
 		return nil, fmt.Errorf("while applying JSON patch: %s", err)
 	}
+
 	return jsonPatched, nil
 }
 
 func ApplyMerge(obj any, patches *cmnv1alpha1.MergePatch) (any, error) {
-	if patches == nil || patches.Patch == nil {
+	if patches == nil || patches.MergePatch == nil {
 		return obj, nil
 	}
 
@@ -43,7 +44,7 @@ func ApplyMerge(obj any, patches *cmnv1alpha1.MergePatch) (any, error) {
 			return nil, fmt.Errorf("while converting patch to unstructured object: %s", err)
 		}
 	} else {
-		marshalledPatch, err := patches.Patch.MarshalJSON()
+		marshalledPatch, err := patches.MergePatch.MarshalJSON()
 		if err != nil {
 			return nil, fmt.Errorf("failed to marshal merge patch: %s", err)
 		}
@@ -59,11 +60,11 @@ func ApplyMerge(obj any, patches *cmnv1alpha1.MergePatch) (any, error) {
 }
 
 func ApplyJSONPatch(obj any, patches *cmnv1alpha1.JSONPatch) (any, error) {
-	if patches == nil || len(patches.Patch) == 0 {
+	if patches == nil || len(patches.JSONPatch) == 0 {
 		return obj, nil
 	}
 
-	marshalledPatchDoc, err := json.Marshal(patches.Patch)
+	marshalledPatchDoc, err := json.Marshal(patches.JSONPatch)
 	if err != nil {
 		return nil, fmt.Errorf("failed to marshal JSON patch: %s", err)
 	}

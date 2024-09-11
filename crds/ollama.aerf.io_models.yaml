@@ -103,7 +103,7 @@ spec:
                   mergePatch:
                     description: |-
                       JSON Merge Patch: https://datatracker.ietf.org/doc/html/rfc7386.
-                      Note that as per RFC "it is not possible to patch part of a target that is not an object, such as to replace just some of the values in an array.". Use JSON Patch for that.
+                      Note that as per RFC "it is not possible to patch part of a target that is not an object, such as to replace just some of the values in an array.". Use JSON MergePatch for that.
                     type: object
                     x-kubernetes-preserve-unknown-fields: true
                 type: object
@@ -147,7 +147,7 @@ spec:
                   mergePatch:
                     description: |-
                       JSON Merge Patch: https://datatracker.ietf.org/doc/html/rfc7386.
-                      Note that as per RFC "it is not possible to patch part of a target that is not an object, such as to replace just some of the values in an array.". Use JSON Patch for that.
+                      Note that as per RFC "it is not possible to patch part of a target that is not an object, such as to replace just some of the values in an array.". Use JSON MergePatch for that.
                     type: object
                     x-kubernetes-preserve-unknown-fields: true
                 type: object
