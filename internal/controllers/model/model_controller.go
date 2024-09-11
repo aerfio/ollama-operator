@@ -77,7 +77,8 @@ func NewReconciler(cli client.Client, recorder record.EventRecorder) *Reconciler
 func (r *Reconciler) ollamaClientForModel(model *ollamav1alpha1.Model) *ollamaapi.Client {
 	u := &url.URL{
 		Scheme: "http",
-		Host:   net.JoinHostPort(fmt.Sprintf("%s.%s.svc.cluster.local", model.GetName(), model.GetNamespace()), strconv.Itoa(defaults.OllamaPort)),
+		// use orbstack k8s locally to run that llm container
+		Host: net.JoinHostPort(fmt.Sprintf("%s.%s.svc.cluster.local", model.GetName(), model.GetNamespace()), strconv.Itoa(defaults.OllamaPort)),
 	}
 
 	return ollamaapi.NewClient(u, r.baseHTTPClient)

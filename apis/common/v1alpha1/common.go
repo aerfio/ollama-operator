@@ -27,9 +27,8 @@ type ConfigMapKeySelector struct {
 }
 
 type Patches struct {
-	JSONPatch           `json:",inline"`
-	MergePatch          `json:",inline"`
-	StrategicMergePatch `json:",inline"`
+	JSONPatch  `json:",inline"`
+	MergePatch `json:",inline"`
 }
 
 type JSONPatch struct {
@@ -55,16 +54,9 @@ type MergePatch struct {
 	MergePatch *runtime.RawExtension `json:"mergePatch,omitempty"`
 }
 
-type StrategicMergePatch struct {
-	// Strategic Merge Patch:
-	// - https://github.com/kubernetes/community/blob/master/contributors/devel/sig-api-machinery/strategic-merge-patch.md
-	// - https://kubernetes.io/docs/tasks/manage-kubernetes-objects/update-api-object-kubectl-patch/#use-a-strategic-merge-patch-to-update-a-deployment
-	StrategicMergePatch *runtime.RawExtension `json:"strategicMergePatch,omitempty"`
-}
-
 func (mp *MergePatch) PatchToUnstructured() (*unstructured.Unstructured, error) {
 	if mp.MergePatch == nil {
-		return nil, fmt.Errorf("patch is nil")
+		return nil, fmt.Errorf("json merge patch is nil")
 	}
 	var err error
 	unstr := &unstructured.Unstructured{}

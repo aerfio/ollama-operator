@@ -2,12 +2,11 @@ package main
 
 import (
 	"cmp"
-	"encoding/json"
 	"fmt"
 	"strings"
 
 	"github.com/alecthomas/kong"
-	jsonpatchv2 "gomodules.xyz/jsonpatch/v2"
+	gocmp "github.com/google/go-cmp/cmp"
 	"k8s.io/apimachinery/pkg/apis/meta/v1/unstructured"
 	"sigs.k8s.io/yaml"
 
@@ -50,17 +49,8 @@ func main() {
 		resources, err := modelcontroller.Resources(model)
 		kctx.FatalIfErrorf(err, "unable to create resources out of model instance")
 
-		noPatchesMarshalled, err := json.Marshal(noPatchesResources)
-		kctx.FatalIfErrorf(err)
-		patchedMarshalled, err := json.Marshal(resources)
-		kctx.FatalIfErrorf(err)
+		fmt.Println(gocmp.Diff(noPatchesResources, resources))
 
-		operations, err := jsonpatchv2.CreatePatch(noPatchesMarshalled, patchedMarshalled)
-		kctx.FatalIfErrorf(err)
-		ops, err := json.Marshal(operations)
-		kctx.FatalIfErrorf(err)
-		fmt.Println(string(ops))
-		// fmt.Println(gocmp.Diff(noPatchesResources, resources))
 	} else {
 		res, err := modelcontroller.Resources(model)
 		kctx.FatalIfErrorf(err, "unable to create resource out of model instance")
