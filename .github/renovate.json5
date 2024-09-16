@@ -43,7 +43,6 @@
       "groupName": "kubernetes deps",
       "matchPackagePrefixes": [
         "k8s.io",
-        "sigs.k8s.io"
       ]
     },
     {
