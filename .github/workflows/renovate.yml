@@ -10,7 +10,9 @@ name: Renovate
         type: string
   schedule:
     - cron: "0 8 * * 1"
-  pull_request:
+  push:
+    branches:
+      - main
     paths:
       - ".github/workflows/renovate.yml"
       - ".github/workflows/validate-renovate-config.yml"
@@ -38,7 +40,7 @@ jobs:
         with:
           APP_PEM: ${{ secrets.GHA_PRIVATE_KEY }}
           APP_ID: ${{ secrets.GHA_APP_ID }}
-      - run: | 
+      - run: |
           echo ${{ github.ref }}
       - name: Self-hosted Renovate
         uses: renovatebot/github-action@dd4d265eb8646cd04fc5f86ff8bc8d496d75a251 # v40.2.8
