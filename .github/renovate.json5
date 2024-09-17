@@ -27,14 +27,22 @@
   "osvVulnerabilityAlerts": true,
   "packageRules": [
     {
+      "enabled": true,
+      "matchManagers": ["gomod"],
+      "matchDepTypes": ["indirect"],
+      "matchPackagePrefixes": [
+        "k8s.io",
+        "sigs.k8s.io"
+      ]
+    },
+    {
       "description": "Single PR for all kubernetes dependency updates, as they usually are all linked",
       "matchDatasources": [
         "go"
       ],
       "groupName": "kubernetes deps",
-      "matchPackageNames": [
-        "k8s.io{/,}**",
-        "sigs.k8s.io{/,}**"
+      "matchPackagePrefixes": [
+        "k8s.io",
       ]
     },
     {
