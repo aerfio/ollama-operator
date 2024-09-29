@@ -36,7 +36,6 @@ import (
 	cliflag "k8s.io/component-base/cli/flag"
 	"k8s.io/component-base/logs"
 	logsv1 "k8s.io/component-base/logs/api/v1"
-	_ "k8s.io/component-base/logs/json/register"
 	"k8s.io/klog/v2"
 	ctrl "sigs.k8s.io/controller-runtime"
 	"sigs.k8s.io/controller-runtime/pkg/cache"
@@ -51,6 +50,7 @@ import (
 	"aerf.io/ollama-operator/internal/restconfig"
 
 	_ "k8s.io/client-go/plugin/pkg/client/auth"
+	_ "k8s.io/component-base/logs/json/register"
 )
 
 var (
@@ -138,13 +138,6 @@ func main() {
 	initFlags(pflag.CommandLine)
 	pflag.CommandLine.SetNormalizeFunc(cliflag.WordSepNormalizeFunc)
 	pflag.CommandLine.AddGoFlagSet(flag.CommandLine)
-	/*
-		// Set log level 2 as default.
-		if err := pflag.CommandLine.Set("v", "2"); err != nil {
-			setupLog.Error(err, "Failed to set default log level")
-			os.Exit(1)
-		}
-	*/
 	pflag.Parse()
 	maps.Copy(dstGroupKindConcurrency, groupKindConcurrency) // this allows us to set concurrency for only 1 CRD without overwriting defaults from other CRDs in this map
 
