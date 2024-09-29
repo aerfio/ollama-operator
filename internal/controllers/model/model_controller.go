@@ -30,7 +30,6 @@ import (
 
 	xpv1 "github.com/crossplane/crossplane-runtime/apis/common/v1"
 	"github.com/crossplane/crossplane-runtime/pkg/errors"
-	"github.com/hashicorp/go-cleanhttp"
 	ollamaapi "github.com/ollama/ollama/api"
 	appsv1 "k8s.io/api/apps/v1"
 	corev1 "k8s.io/api/core/v1"
@@ -64,11 +63,11 @@ type Reconciler struct {
 	baseHTTPClient *http.Client
 }
 
-func NewReconciler(cli client.Client, recorder record.EventRecorder) *Reconciler {
+func NewReconciler(cli client.Client, recorder record.EventRecorder, baseHTTPClient *http.Client) *Reconciler {
 	return &Reconciler{
 		client:         client.WithFieldOwner(cli, "ollama-operator.model-controller"),
 		recorder:       recorder,
-		baseHTTPClient: cleanhttp.DefaultPooledClient(),
+		baseHTTPClient: baseHTTPClient,
 	}
 }
 
