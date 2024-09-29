@@ -29,7 +29,6 @@ import (
 	"k8s.io/utils/ptr"
 	ctrl "sigs.k8s.io/controller-runtime"
 	"sigs.k8s.io/controller-runtime/pkg/client"
-	"sigs.k8s.io/controller-runtime/pkg/controller"
 	"sigs.k8s.io/controller-runtime/pkg/handler"
 	"sigs.k8s.io/controller-runtime/pkg/reconcile"
 	"sigs.k8s.io/controller-runtime/pkg/source"
@@ -40,18 +39,16 @@ import (
 )
 
 type Reconciler struct {
-	client                  client.Client
-	recorder                record.EventRecorder
-	baseHTTPClient          *http.Client
-	maxConcurrentReconciles int
+	client         client.Client
+	recorder       record.EventRecorder
+	baseHTTPClient *http.Client
 }
 
-func NewReconciler(cli client.Client, recorder record.EventRecorder, maxConcurrentReconciles int) *Reconciler {
+func NewReconciler(cli client.Client, recorder record.EventRecorder) *Reconciler {
 	return &Reconciler{
-		client:                  client.WithFieldOwner(cli, "ollama-operator.prompt-controller"),
-		recorder:                recorder,
-		baseHTTPClient:          cleanhttp.DefaultPooledClient(),
-		maxConcurrentReconciles: maxConcurrentReconciles,
+		client:         client.WithFieldOwner(cli, "ollama-operator.prompt-controller"),
+		recorder:       recorder,
+		baseHTTPClient: cleanhttp.DefaultPooledClient(),
 	}
 }
 
@@ -77,7 +74,7 @@ func (r *Reconciler) SetupWithManager(mgr ctrl.Manager) error {
 				return nil
 			}
 
-			ctrlRequests := []ctrl.Request{}
+			var ctrlRequests []ctrl.Request
 			for _, prompt := range promptList.Items {
 				if prompt.Spec.ModelRef.Name == model.GetName() {
 					ctrlRequests = append(ctrlRequests, ctrl.Request{
@@ -90,9 +87,6 @@ func (r *Reconciler) SetupWithManager(mgr ctrl.Manager) error {
 			}
 			return ctrlRequests
 		}))).
-		WithOptions(controller.Options{
-			MaxConcurrentReconciles: r.maxConcurrentReconciles,
-		}).
 		Complete(
 			errors.WithSilentRequeueOnConflict(
 				reconcile.AsReconciler[*ollamav1alpha1.Prompt](mgr.GetClient(), r),

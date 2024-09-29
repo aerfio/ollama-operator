@@ -90,6 +90,8 @@ type ModelList struct {
 	Items           []Model `json:"items"`
 }
 
+var ModelGroupVersionKind = GroupVersion.WithKind("Model")
+
 func init() {
 	SchemeBuilder.Register(&Model{}, &ModelList{})
 }

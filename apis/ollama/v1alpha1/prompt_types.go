@@ -137,6 +137,8 @@ type PromptList struct {
 	Items           []Prompt `json:"items"`
 }
 
+var PromptGroupVersionKind = GroupVersion.WithKind("Prompt")
+
 func init() {
 	SchemeBuilder.Register(&Prompt{}, &PromptList{})
 }
