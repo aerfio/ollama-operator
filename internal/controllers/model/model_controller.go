@@ -31,6 +31,8 @@ import (
 	xpv1 "github.com/crossplane/crossplane-runtime/apis/common/v1"
 	"github.com/crossplane/crossplane-runtime/pkg/errors"
 	ollamaapi "github.com/ollama/ollama/api"
+	"go.opentelemetry.io/otel/attribute"
+	"go.opentelemetry.io/otel/trace"
 	appsv1 "k8s.io/api/apps/v1"
 	corev1 "k8s.io/api/core/v1"
 	apierrors "k8s.io/apimachinery/pkg/api/errors"
@@ -53,32 +55,37 @@ import (
 	"aerf.io/ollama-operator/internal/defaults"
 	"aerf.io/ollama-operator/internal/eventrecorder"
 	"aerf.io/ollama-operator/internal/patches"
+	"aerf.io/ollama-operator/internal/tracing/ollama"
 
 	"aerf.io/k8sutils"
+	"aerf.io/k8sutils/k8stracing"
+	"aerf.io/k8sutils/utilreconcilers"
 )
 
 type Reconciler struct {
 	client         client.Client
 	recorder       record.EventRecorder
 	baseHTTPClient *http.Client
+	tp             trace.TracerProvider
 }
 
-func NewReconciler(cli client.Client, recorder record.EventRecorder, baseHTTPClient *http.Client) *Reconciler {
+func NewReconciler(cli client.Client, recorder record.EventRecorder, baseHTTPClient *http.Client, tp trace.TracerProvider) *Reconciler {
 	return &Reconciler{
 		client:         client.WithFieldOwner(cli, "ollama-operator.model-controller"),
 		recorder:       recorder,
 		baseHTTPClient: baseHTTPClient,
+		tp:             tp,
 	}
 }
 
-func (r *Reconciler) ollamaClientForModel(model *ollamav1alpha1.Model) *ollamaapi.Client {
+func (r *Reconciler) ollamaClientForModel(model *ollamav1alpha1.Model) ollama.TracingAwareClient {
 	u := &url.URL{
 		Scheme: "http",
 		// use orbstack k8s locally to run that llm container
 		Host: net.JoinHostPort(fmt.Sprintf("%s.%s.svc.cluster.local", model.GetName(), model.GetNamespace()), strconv.Itoa(defaults.OllamaPort)),
 	}
 
-	return ollamaapi.NewClient(u, r.baseHTTPClient)
+	return ollama.NewTracingAwareClient(ollamaapi.NewClient(u, r.baseHTTPClient), r.tp.Tracer("ollama-client"))
 }
 
 func (r *Reconciler) apply(ctx context.Context, obj *unstructured.Unstructured, opts ...client.PatchOption) error {
@@ -219,14 +226,20 @@ func isStatefulSetReady(sts *appsv1.StatefulSet) (string, bool, error) {
 }
 
 // SetupWithManager sets up the controller with the Manager.
-func (r *Reconciler) SetupWithManager(mgr ctrl.Manager) error {
+func (r *Reconciler) SetupWithManager(mgr ctrl.Manager, tp trace.TracerProvider) error {
 	return ctrl.NewControllerManagedBy(mgr).
 		For(&ollamav1alpha1.Model{}).
 		Owns(&appsv1.StatefulSet{}).
 		Owns(&corev1.Service{}).
 		Complete(
-			errors.WithSilentRequeueOnConflict(
-				reconcile.AsReconciler[*ollamav1alpha1.Model](mgr.GetClient(), r),
+			utilreconcilers.NewWithTracingReconciler(
+				errors.WithSilentRequeueOnConflict(
+					reconcile.AsReconciler[*ollamav1alpha1.Model](
+						k8stracing.NewK8sClient(mgr.GetClient(), tp),
+						r,
+					),
+				),
+				tp.Tracer("model-controller", trace.WithInstrumentationAttributes(attribute.Stringer("controller-gvk", ollamav1alpha1.ModelGroupVersionKind))),
 			),
 		)
 }
