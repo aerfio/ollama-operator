@@ -14,7 +14,7 @@ env:
 
 jobs:
   test:
-    runs-on: ubuntu-22.04
+    runs-on: ubuntu-24.04
     steps:
       - name: Checkout repository
         uses: actions/checkout@692973e3d937129bcbf40652eb9f2f61becf3332 # v4
@@ -29,7 +29,7 @@ jobs:
       - run: |
           git diff --exit-code
   build:
-    runs-on: ubuntu-22.04
+    runs-on: ubuntu-24.04
     steps:
       - name: Checkout repository
         uses: actions/checkout@692973e3d937129bcbf40652eb9f2f61becf3332 # v4
@@ -42,7 +42,7 @@ jobs:
       - run: |
           git diff --exit-code
   lint:
-    runs-on: ubuntu-22.04
+    runs-on: ubuntu-24.04
     # https://github.com/golangci/golangci-lint-action?tab=readme-ov-file#annotations
     permissions:
       # Required: allow read access to the content for analysis.
@@ -64,7 +64,7 @@ jobs:
         with:
           version: ${{ env.GOLANGCI_LINT_VERSION }}
   check-vulnerabilities:
-    runs-on: ubuntu-22.04
+    runs-on: ubuntu-24.04
     steps:
       - name: Checkout repository
         uses: actions/checkout@692973e3d937129bcbf40652eb9f2f61becf3332 # v4
@@ -72,7 +72,7 @@ jobs:
         with:
           go-version-file: go.mod
   build-container-image:
-    runs-on: ubuntu-22.04
+    runs-on: ubuntu-24.04
     permissions:
       packages: write
     steps:
