@@ -17,6 +17,7 @@ limitations under the License.
 package main
 
 import (
+	"context"
 	"flag"
 	"fmt"
 	"maps"
@@ -24,19 +25,29 @@ import (
 	"os"
 	"time"
 
+	"github.com/crossplane/crossplane-runtime/pkg/errors"
 	"github.com/hashicorp/go-cleanhttp"
 	"github.com/spf13/pflag"
+	"go.opentelemetry.io/contrib/instrumentation/net/http/otelhttp"
+	"go.opentelemetry.io/otel"
+	metricnoop "go.opentelemetry.io/otel/metric/noop"
+	otelsdkresource "go.opentelemetry.io/otel/sdk/resource"
+	semconv "go.opentelemetry.io/otel/semconv/v1.26.0"
+	"go.uber.org/multierr"
 	corev1 "k8s.io/api/core/v1"
 	metav1 "k8s.io/apimachinery/pkg/apis/meta/v1"
 	"k8s.io/apimachinery/pkg/labels"
 	"k8s.io/apimachinery/pkg/runtime"
 	utilruntime "k8s.io/apimachinery/pkg/util/runtime"
-	"k8s.io/apiserver/pkg/server/routes"
+	"k8s.io/apimachinery/pkg/util/validation/field"
 	clientgoscheme "k8s.io/client-go/kubernetes/scheme"
 	cliflag "k8s.io/component-base/cli/flag"
 	"k8s.io/component-base/logs"
-	logsv1 "k8s.io/component-base/logs/api/v1"
+	logsapi "k8s.io/component-base/logs/api/v1"
+	"k8s.io/component-base/tracing"
+	tracingapi "k8s.io/component-base/tracing/api/v1"
 	"k8s.io/klog/v2"
+	"k8s.io/utils/ptr"
 	ctrl "sigs.k8s.io/controller-runtime"
 	"sigs.k8s.io/controller-runtime/pkg/cache"
 	"sigs.k8s.io/controller-runtime/pkg/client"
@@ -53,16 +64,22 @@ import (
 	_ "k8s.io/component-base/logs/json/register"
 )
 
-var (
-	scheme     = runtime.NewScheme()
-	setupLog   = ctrl.Log.WithName("setup")
-	logOptions = logs.NewOptions()
+func adjustedLogOptions() *logsapi.LoggingConfiguration {
+	logOptions := logs.NewOptions()
+	logOptions.Format = logsapi.JSONLogFormat
+	logOptions.Verbosity = logsapi.VerbosityLevel(0)
+	return logOptions
+}
 
+var (
+	scheme                              = runtime.NewScheme()
+	setupLog                            = ctrl.Log.WithName("setup")
+	logOptions                          = adjustedLogOptions()
 	printHelpAndExit                    = false
 	diagnosticsPort                     = 8080
 	probePort                           = 8081
 	profilerPort                        = 8082
-	enableLeaderElection                = true
+	enableLeaderElection                = false
 	leaderElectionLeaseDuration         = 15 * time.Second
 	leaderElectionRenewDeadline         = 10 * time.Second
 	leaderElectionRetryPeriod           = 2 * time.Second
@@ -73,7 +90,9 @@ var (
 		ollamav1alpha1.ModelGroupVersionKind.GroupKind().String():  10,
 		ollamav1alpha1.PromptGroupVersionKind.GroupKind().String(): 10,
 	}
-	groupKindConcurrency = maps.Clone(dstGroupKindConcurrency)
+	groupKindConcurrency               = maps.Clone(dstGroupKindConcurrency)
+	tracingEndpoint                    = ""
+	tracingSampingRatePerMillion int32 = 0
 )
 
 func init() {
@@ -82,8 +101,7 @@ func init() {
 }
 
 func initFlags(fs *pflag.FlagSet) {
-	logsv1.AddFlags(logOptions, fs)
-
+	logsapi.AddFlags(logOptions, fs)
 	// hide alpha lvl flags
 	// and the ones we do not recommend to use
 	for _, flagName := range []string{
@@ -110,7 +128,7 @@ func initFlags(fs *pflag.FlagSet) {
 	fs.DurationVar(&leaderElectionRetryPeriod, "leader-elect-retry-period", leaderElectionRetryPeriod,
 		"Duration the LeaderElector clients should wait between tries of actions (duration string)")
 
-	fs.StringVar(&watchNamespace, "namespace", "",
+	fs.StringVar(&watchNamespace, "namespace", watchNamespace,
 		"Namespace that the operator watches to reconcile ollama.aerf.io objects. If unspecified, the operator watches objects across all namespaces.")
 
 	fs.IntVar(&profilerPort, "profiler-port", profilerPort,
@@ -132,9 +150,22 @@ func initFlags(fs *pflag.FlagSet) {
 
 	fs.StringToIntVar(&groupKindConcurrency, "group-kind-concurrency", groupKindConcurrency,
 		`"group-kind-concurrency" is a map from a Kind to the number of concurrent reconciliation allowed for that controller. The key is expected to be consistent in form with GroupKind.String(), e.g. ReplicaSet in apps group (regardless of version) would be "ReplicaSet.apps".`)
+
+	fs.StringVar(&tracingEndpoint, "tracing-endpoint", tracingEndpoint,
+		"Endpoint of the collector this component will report traces to. The connection is insecure, and does not currently support TLS.")
+
+	fs.Int32Var(&tracingSampingRatePerMillion, "tracing-sampling-rate-per-million", tracingSampingRatePerMillion,
+		"The number of samples to collect per million spans. Ignored if --tracing-endpoint is not set")
 }
 
 func main() {
+	if err := mainErr(); err != nil {
+		klog.Background().Error(err, "failed to run the application")
+		os.Exit(1)
+	}
+}
+
+func mainErr() (retErr error) {
 	initFlags(pflag.CommandLine)
 	pflag.CommandLine.SetNormalizeFunc(cliflag.WordSepNormalizeFunc)
 	pflag.CommandLine.AddGoFlagSet(flag.CommandLine)
@@ -143,17 +174,48 @@ func main() {
 
 	if printHelpAndExit {
 		pflag.Usage()
-		os.Exit(0)
+		return nil
 	}
 
-	if err := logsv1.ValidateAndApply(logOptions, nil); err != nil {
-		setupLog.Error(err, "Unable to start manager")
-		os.Exit(1)
+	if err := logsapi.ValidateAndApply(logOptions, nil); err != nil {
+		return fmt.Errorf("failed to validate logs: %s", err)
 	}
-
 	// klog.Background will automatically use the right logger.
+	log := klog.Background()
 	ctrl.SetLogger(klog.Background())
 
+	var tracingConfig *tracingapi.TracingConfiguration
+	if tracingEndpoint != "" {
+		tracingConfig = &tracingapi.TracingConfiguration{
+			Endpoint:               ptr.To(tracingEndpoint),
+			SamplingRatePerMillion: ptr.To(tracingSampingRatePerMillion),
+		}
+	} else if tracingEndpoint == "" && tracingSampingRatePerMillion != 0 {
+		klog.Warningf("--tracing-endpoint was not set, but other tracing configuration flags were set, tracing will remain disabled")
+	}
+
+	if err := tracingapi.ValidateTracingConfiguration(tracingConfig, nil, field.NewPath("tracing")).ToAggregate(); err != nil {
+		return fmt.Errorf("failed to validate tracing configuration: %s", err)
+	}
+	log.Info("tracing configuration", "config", tracingConfig)
+
+	ctx := ctrl.SetupSignalHandler()
+	otel.SetTextMapPropagator(tracing.Propagators())
+	otel.SetMeterProvider(metricnoop.NewMeterProvider()) // # https://github.com/open-telemetry/opentelemetry-go-contrib/issues/5190
+	tp, err := tracing.NewProvider(ctx, tracingConfig, nil, []otelsdkresource.Option{
+		otelsdkresource.WithAttributes(
+			semconv.ServiceNameKey.String("ollama-operator"),
+		),
+	})
+	if err != nil {
+		return fmt.Errorf("failed to create tracing provider: %s", err)
+	}
+	defer func() {
+		shutdownCtx, cancel := context.WithTimeout(context.Background(), 10*time.Second)
+		defer cancel()
+
+		retErr = multierr.Append(retErr, tp.Shutdown(shutdownCtx))
+	}()
 	/*
 		if secureMetrics {
 			// FilterProvider is used to protect the metrics endpoint with authn/authz.
@@ -164,7 +226,10 @@ func main() {
 		}
 	*/
 
-	restCfg := ctrl.GetConfigOrDie()
+	restCfg, err := ctrl.GetConfig()
+	if retErr != nil {
+		return fmt.Errorf("failed to get config for connecting to k8s apiserver: %s", err)
+	}
 	restconfig.Adjust(
 		restCfg,
 		restConfigQPS,
@@ -172,15 +237,25 @@ func main() {
 		"ollama-operator")
 
 	containsImageSelector := labels.SelectorFromSet(map[string]string{"ollama.aerf.io/contains-image": "true"})
+
+	cacheOpts := cache.Options{
+		ByObject: map[client.Object]cache.ByObject{
+			&corev1.ConfigMap{}: {
+				Label: containsImageSelector,
+			},
+		},
+	}
+	if watchNamespace != "" {
+		cacheOpts.DefaultNamespaces = map[string]cache.Config{
+			watchNamespace: {},
+		}
+	}
 	mgr, err := ctrl.NewManager(restCfg, ctrl.Options{
 		Scheme:                 scheme,
 		HealthProbeBindAddress: fmt.Sprintf(":%d", probePort),
 		Metrics: metricsserver.Options{
 			SecureServing: false,
-			ExtraHandlers: map[string]http.Handler{
-				"/debug/flags/v": routes.StringFlagPutHandler(logs.GlogSetter),
-			},
-			BindAddress: fmt.Sprintf(":%d", diagnosticsPort),
+			BindAddress:   fmt.Sprintf(":%d", diagnosticsPort),
 		},
 
 		LeaderElection:   enableLeaderElection,
@@ -198,58 +273,44 @@ func main() {
 		// the manager stops, so would be fine to enable this option. However,
 		// if you are doing or is intended to do any operation such as perform cleanups
 		// after the manager stops then its usage might be unsafe.
-		LeaderElectionReleaseOnCancel: true,
+		LeaderElectionReleaseOnCancel: false, // tracing provider shutdown makes us set it to false
 		Controller: config.Controller{
 			GroupKindConcurrency: groupKindConcurrency,
 		},
 		PprofBindAddress: fmt.Sprintf(":%d", profilerPort),
-		Cache: cache.Options{
-			DefaultNamespaces: map[string]cache.Config{
-				watchNamespace: {},
-			},
-			ByObject: map[client.Object]cache.ByObject{
-				&corev1.ConfigMap{}: {
-					Label: containsImageSelector,
-				},
-			},
-		},
-		Client: client.Options{
-			Cache: &client.CacheOptions{
-				Unstructured: true,
-			},
-		},
+		Cache:            cacheOpts,
 	})
 	if err != nil {
-		setupLog.Error(err, "unable to start manager")
-		os.Exit(1)
+		return fmt.Errorf("failed to create controller manager: %s", err)
 	}
 
-	httpCli := cleanhttp.DefaultPooledClient()
+	httpCli := &http.Client{
+		Transport: otelhttp.NewTransport(
+			cleanhttp.DefaultPooledTransport(),
+			otelhttp.WithPropagators(tracing.Propagators()),
+			otelhttp.WithTracerProvider(tp),
+			otelhttp.WithPublicEndpoint(),
+			otelhttp.WithMeterProvider(metricnoop.NewMeterProvider()),
+		),
+	}
 
-	if err = model.NewReconciler(mgr.GetClient(), mgr.GetEventRecorderFor("model-controller"), httpCli).SetupWithManager(mgr); err != nil {
-		setupLog.Error(err, "unable to create controller", "controller", "Model")
-		os.Exit(1)
+	if err = model.NewReconciler(mgr.GetClient(), mgr.GetEventRecorderFor("model-controller"), httpCli, tp).SetupWithManager(mgr, tp); err != nil {
+		return fmt.Errorf("failed to create Model controller: %s", err)
 	}
 	if err = prompt.NewReconciler(
 		mgr.GetClient(),
 		mgr.GetEventRecorderFor("prompt-controller"),
-	).SetupWithManager(mgr); err != nil {
-		setupLog.Error(err, "unable to create controller", "controller", "Prompt")
-		os.Exit(1)
+	).SetupWithManager(mgr, tp); err != nil {
+		return fmt.Errorf("failed to create Prompt controller: %s", err)
 	}
 
 	if err := mgr.AddHealthzCheck("healthz", healthz.Ping); err != nil {
-		setupLog.Error(err, "unable to set up health check")
-		os.Exit(1)
+		return fmt.Errorf("failed to add healthz checker: %s", err)
 	}
 	if err := mgr.AddReadyzCheck("readyz", healthz.Ping); err != nil {
-		setupLog.Error(err, "unable to set up ready check")
-		os.Exit(1)
+		return fmt.Errorf("failed to add readyz checker: %s", err)
 	}
 
 	setupLog.Info("starting manager")
-	if err := mgr.Start(ctrl.SetupSignalHandler()); err != nil {
-		setupLog.Error(err, "problem running manager")
-		os.Exit(1)
-	}
+	return errors.Wrap(mgr.Start(ctx), "manager problem running manager")
 }

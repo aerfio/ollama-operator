@@ -20,6 +20,8 @@ import (
 	"github.com/klauspost/compress/gzip"
 	"github.com/klauspost/compress/zstd"
 	ollamaapi "github.com/ollama/ollama/api"
+	"go.opentelemetry.io/otel/attribute"
+	"go.opentelemetry.io/otel/trace"
 	"go.uber.org/multierr"
 	corev1 "k8s.io/api/core/v1"
 	apierrors "k8s.io/apimachinery/pkg/api/errors"
@@ -36,6 +38,9 @@ import (
 
 	ollamav1alpha1 "aerf.io/ollama-operator/apis/ollama/v1alpha1"
 	"aerf.io/ollama-operator/internal/defaults"
+
+	"aerf.io/k8sutils/k8stracing"
+	"aerf.io/k8sutils/utilreconcilers"
 )
 
 type Reconciler struct {
@@ -62,7 +67,7 @@ func (r *Reconciler) ollamaClientForModel(model *ollamav1alpha1.Model) *ollamaap
 }
 
 // SetupWithManager sets up the controller with the Manager.
-func (r *Reconciler) SetupWithManager(mgr ctrl.Manager) error {
+func (r *Reconciler) SetupWithManager(mgr ctrl.Manager, tp trace.TracerProvider) error {
 	return ctrl.NewControllerManagedBy(mgr).
 		For(&ollamav1alpha1.Prompt{}).
 		WatchesRawSource(source.Kind(mgr.GetCache(), &ollamav1alpha1.Model{}, handler.TypedEnqueueRequestsFromMapFunc[*ollamav1alpha1.Model](func(ctx context.Context, model *ollamav1alpha1.Model) []reconcile.Request {
@@ -88,8 +93,14 @@ func (r *Reconciler) SetupWithManager(mgr ctrl.Manager) error {
 			return ctrlRequests
 		}))).
 		Complete(
-			errors.WithSilentRequeueOnConflict(
-				reconcile.AsReconciler[*ollamav1alpha1.Prompt](mgr.GetClient(), r),
+			utilreconcilers.NewWithTracingReconciler(
+				errors.WithSilentRequeueOnConflict(
+					reconcile.AsReconciler[*ollamav1alpha1.Prompt](
+						k8stracing.NewK8sClient(mgr.GetClient(), tp),
+						r,
+					),
+				),
+				tp.Tracer("prompt-controller", trace.WithInstrumentationAttributes(attribute.Stringer("controller-gvk", ollamav1alpha1.PromptGroupVersionKind))),
 			),
 		)
 }
