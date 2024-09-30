@@ -65,10 +65,10 @@ import (
 )
 
 func adjustedLogOptions() *logsapi.LoggingConfiguration {
-	logOptions := logs.NewOptions()
-	logOptions.Format = logsapi.JSONLogFormat
-	logOptions.Verbosity = logsapi.VerbosityLevel(0)
-	return logOptions
+	opts := logs.NewOptions()
+	opts.Format = logsapi.JSONLogFormat
+	opts.Verbosity = logsapi.VerbosityLevel(0)
+	return opts
 }
 
 var (
