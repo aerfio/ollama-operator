@@ -32,6 +32,7 @@
       "matchDepTypes": ["indirect"],
       "matchPackagePrefixes": [
         "k8s.io",
+        "go.opentelemetry.io"
       ]
     },
     {
