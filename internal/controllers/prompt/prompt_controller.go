@@ -8,15 +8,11 @@ import (
 	"encoding/json"
 	"fmt"
 	"io"
-	"net"
 	"net/http"
-	"net/url"
-	"strconv"
 	"strings"
 
 	xpv1 "github.com/crossplane/crossplane-runtime/apis/common/v1"
 	"github.com/crossplane/crossplane-runtime/pkg/errors"
-	"github.com/hashicorp/go-cleanhttp"
 	"github.com/klauspost/compress/gzip"
 	"github.com/klauspost/compress/zstd"
 	ollamaapi "github.com/ollama/ollama/api"
@@ -37,44 +33,43 @@ import (
 	"sigs.k8s.io/yaml"
 
 	ollamav1alpha1 "aerf.io/ollama-operator/apis/ollama/v1alpha1"
-	"aerf.io/ollama-operator/internal/defaults"
+	"aerf.io/ollama-operator/internal/ollamaclient"
 
 	"aerf.io/k8sutils/k8stracing"
 	"aerf.io/k8sutils/utilreconcilers"
 )
 
 type Reconciler struct {
-	client         client.Client
-	recorder       record.EventRecorder
-	baseHTTPClient *http.Client
+	client               client.Client
+	recorder             record.EventRecorder
+	baseHTTPClient       *http.Client
+	ollamaClientProvider *ollamaclient.Provider
 }
 
-func NewReconciler(cli client.Client, recorder record.EventRecorder) *Reconciler {
+func NewReconciler(cli client.Client, recorder record.EventRecorder, httpCli *http.Client, tp trace.TracerProvider) *Reconciler {
 	return &Reconciler{
-		client:         client.WithFieldOwner(cli, "ollama-operator.prompt-controller"),
-		recorder:       recorder,
-		baseHTTPClient: cleanhttp.DefaultPooledClient(),
+		client:               client.WithFieldOwner(cli, "ollama-operator.prompt-controller"),
+		recorder:             recorder,
+		baseHTTPClient:       httpCli,
+		ollamaClientProvider: ollamaclient.NewProvider(httpCli, tp.Tracer("prompt-controller.ollama-client")),
 	}
-}
-
-func (r *Reconciler) ollamaClientForModel(model *ollamav1alpha1.Model) *ollamaapi.Client {
-	u := &url.URL{
-		Scheme: "http",
-		Host:   net.JoinHostPort(fmt.Sprintf("%s.%s.svc.cluster.local", model.GetName(), model.GetNamespace()), strconv.Itoa(defaults.OllamaPort)),
-	}
-
-	return ollamaapi.NewClient(u, r.baseHTTPClient)
 }
 
 // SetupWithManager sets up the controller with the Manager.
 func (r *Reconciler) SetupWithManager(mgr ctrl.Manager, tp trace.TracerProvider) error {
+	k8sCli := client.WithFieldOwner(
+		client.WithFieldValidation(
+			k8stracing.NewK8sClient(mgr.GetClient(), tp),
+			metav1.FieldValidationStrict),
+		"ollama-operator.prompt-controller")
+
 	return ctrl.NewControllerManagedBy(mgr).
 		For(&ollamav1alpha1.Prompt{}).
 		WatchesRawSource(source.Kind(mgr.GetCache(), &ollamav1alpha1.Model{}, handler.TypedEnqueueRequestsFromMapFunc[*ollamav1alpha1.Model](func(ctx context.Context, model *ollamav1alpha1.Model) []reconcile.Request {
 			log := mgr.GetLogger().WithValues("controller", "prompt-controller")
 
 			promptList := &ollamav1alpha1.PromptList{}
-			if err := mgr.GetClient().List(ctx, promptList, client.InNamespace(model.GetNamespace())); err != nil {
+			if err := k8sCli.List(ctx, promptList, client.InNamespace(model.GetNamespace())); err != nil {
 				log.Error(err, "unable to list prompts")
 				return nil
 			}
@@ -95,10 +90,7 @@ func (r *Reconciler) SetupWithManager(mgr ctrl.Manager, tp trace.TracerProvider)
 		Complete(
 			utilreconcilers.NewWithTracingReconciler(
 				errors.WithSilentRequeueOnConflict(
-					reconcile.AsReconciler[*ollamav1alpha1.Prompt](
-						k8stracing.NewK8sClient(mgr.GetClient(), tp),
-						r,
-					),
+					reconcile.AsReconciler[*ollamav1alpha1.Prompt](k8sCli, r),
 				),
 				tp.Tracer("prompt-controller", trace.WithInstrumentationAttributes(attribute.Stringer("controller-gvk", ollamav1alpha1.PromptGroupVersionKind))),
 			),
@@ -153,7 +145,7 @@ func (r *Reconciler) Reconcile(ctx context.Context, prompt *ollamav1alpha1.Promp
 		return reconcile.Result{Requeue: true}, nil
 	}
 
-	ollamaCli := r.ollamaClientForModel(referencedModel)
+	ollamaCli := r.ollamaClientProvider.ForModel(referencedModel)
 
 	opts, err := r.getOptionsFromSpecOptions(prompt)
 	if err != nil {
@@ -163,7 +155,7 @@ func (r *Reconciler) Reconcile(ctx context.Context, prompt *ollamav1alpha1.Promp
 	var imageData []ollamaapi.ImageData
 	if len(prompt.Spec.Images) > 0 {
 		for _, image := range prompt.Spec.Images {
-			extracted, err := imageExtractor(ctx, r.client, image)
+			extracted, err := extractRawImageData(ctx, r.client, image)
 			if err != nil {
 				return ctrl.Result{}, fmt.Errorf("failed to extract image: %w", err)
 			}
@@ -210,7 +202,6 @@ func (r *Reconciler) Reconcile(ctx context.Context, prompt *ollamav1alpha1.Promp
 		return reconcile.Result{}, fmt.Errorf("failed to generate prompt: %w", err)
 	}
 
-	log.Info("generatedResponse", "resp", generateResp)
 	// todo handle done, doneReason
 
 	marshalledContext, err := json.Marshal(generateResp.Context)
@@ -261,7 +252,7 @@ func convertImageData(data ollamav1alpha1.ImageData) (ollamaapi.ImageData, error
 		}
 		defer gzipReader.Close()
 		content, err := io.ReadAll(gzipReader)
-		return content, errors.Wrap(err, "while decompressing image encoded in gzip format")
+		return content, errors.Wrap(multierr.Append(err, gzipReader.Close()), "while decompressing image encoded in gzip format")
 	case ollamav1alpha1.ImageFormatZstd:
 		content, err := DecodeBase64Zstd([]byte(data.Data))
 		return content, errors.Wrap(err, "while decompressing image encoded in zstd")
@@ -280,36 +271,7 @@ func DecodeBase64Zstd(input []byte) ([]byte, error) {
 	return io.ReadAll(zstdReader)
 }
 
-func Compress(in io.Reader, out io.Writer) error {
-	enc, err := zstd.NewWriter(out)
-	if err != nil {
-		return err
-	}
-	_, err = io.Copy(enc, in)
-	if err != nil {
-		enc.Close()
-		return err
-	}
-	return enc.Close()
-}
-
-func EncodeZstdBase64(input []byte) (out string, err error) {
-	buf := new(bytes.Buffer)
-	bw := base64.NewEncoder(base64.StdEncoding, buf)
-	defer multierr.AppendFunc(&err, bw.Close)
-
-	w, err := zstd.NewWriter(bw)
-	if err != nil {
-		return "", err
-	}
-	defer multierr.AppendFunc(&err, w.Close)
-	if _, err := w.Write(input); err != nil {
-		return "", err
-	}
-	return buf.String(), nil
-}
-
-func imageExtractor(ctx context.Context, cli client.Reader, ref ollamav1alpha1.ImageSource) (ollamav1alpha1.ImageData, error) {
+func extractRawImageData(ctx context.Context, cli client.Reader, ref ollamav1alpha1.ImageSource) (ollamav1alpha1.ImageData, error) {
 	if ref.Inline != nil {
 		return ollamav1alpha1.ImageData{
 			Format: ref.Inline.Format,

@@ -34,6 +34,7 @@ import (
 	otelsdkresource "go.opentelemetry.io/otel/sdk/resource"
 	semconv "go.opentelemetry.io/otel/semconv/v1.26.0"
 	"go.uber.org/multierr"
+	appsv1 "k8s.io/api/apps/v1"
 	corev1 "k8s.io/api/core/v1"
 	metav1 "k8s.io/apimachinery/pkg/apis/meta/v1"
 	"k8s.io/apimachinery/pkg/labels"
@@ -56,6 +57,7 @@ import (
 	metricsserver "sigs.k8s.io/controller-runtime/pkg/metrics/server"
 
 	ollamav1alpha1 "aerf.io/ollama-operator/apis/ollama/v1alpha1"
+	"aerf.io/ollama-operator/internal/commonmeta"
 	"aerf.io/ollama-operator/internal/controllers/model"
 	"aerf.io/ollama-operator/internal/controllers/prompt"
 	"aerf.io/ollama-operator/internal/restconfig"
@@ -149,7 +151,9 @@ func initFlags(fs *pflag.FlagSet) {
 	fs.BoolVarP(&printHelpAndExit, "help", "h", printHelpAndExit, "Prints flag documentation and exits")
 
 	fs.StringToIntVar(&groupKindConcurrency, "group-kind-concurrency", groupKindConcurrency,
-		`"group-kind-concurrency" is a map from a Kind to the number of concurrent reconciliation allowed for that controller. The key is expected to be consistent in form with GroupKind.String(), e.g. ReplicaSet in apps group (regardless of version) would be "ReplicaSet.apps".`)
+		"A map from a Kind to the number of concurrent reconciliation allowed for that controller. "+
+			"The key is expected to be consistent in form with GroupKind.String(), e.g. ReplicaSet in apps group (regardless of version) would be \"ReplicaSet.apps\". "+
+			"Anything set by this flag is merged with defaults, so that setting it for e.g Prompts does not remove defaults for Model CRD")
 
 	fs.StringVar(&tracingEndpoint, "tracing-endpoint", tracingEndpoint,
 		"Endpoint of the collector this component will report traces to. The connection is insecure, and does not currently support TLS.")
@@ -227,7 +231,7 @@ func mainErr() (retErr error) {
 	*/
 
 	restCfg, err := ctrl.GetConfig()
-	if retErr != nil {
+	if err != nil {
 		return fmt.Errorf("failed to get config for connecting to k8s apiserver: %s", err)
 	}
 	restconfig.Adjust(
@@ -237,10 +241,31 @@ func mainErr() (retErr error) {
 		"ollama-operator")
 
 	containsImageSelector := labels.SelectorFromSet(map[string]string{"ollama.aerf.io/contains-image": "true"})
-
 	cacheOpts := cache.Options{
+		ReaderFailOnMissingInformer: true, // let's try to ensure we understand what resources are cached by disabling auto-cache-creation and doing it manually here
 		ByObject: map[client.Object]cache.ByObject{
+			/*
+				exposes ollama sts
+			*/
+			&corev1.Service{}: {
+				Label: labels.SelectorFromSet(commonmeta.ManagedByLabel),
+			},
+			/*
+				runs ollama container
+			*/
+			&appsv1.StatefulSet{}: {
+				Label: labels.SelectorFromSet(commonmeta.ManagedByLabel),
+			},
+			/*
+				used to read image data in Prompt controller
+			*/
 			&corev1.ConfigMap{}: {
+				Label: containsImageSelector,
+			},
+			/*
+				used to read image data in Prompt controller
+			*/
+			&corev1.Secret{}: {
 				Label: containsImageSelector,
 			},
 		},
@@ -250,6 +275,7 @@ func mainErr() (retErr error) {
 			watchNamespace: {},
 		}
 	}
+
 	mgr, err := ctrl.NewManager(restCfg, ctrl.Options{
 		Scheme:                 scheme,
 		HealthProbeBindAddress: fmt.Sprintf(":%d", probePort),
@@ -257,7 +283,6 @@ func mainErr() (retErr error) {
 			SecureServing: false,
 			BindAddress:   fmt.Sprintf(":%d", diagnosticsPort),
 		},
-
 		LeaderElection:   enableLeaderElection,
 		LeaderElectionID: "ollama-operator.aerf.io",
 		LeaseDuration:    &leaderElectionLeaseDuration,
@@ -279,6 +304,11 @@ func mainErr() (retErr error) {
 		},
 		PprofBindAddress: fmt.Sprintf(":%d", profilerPort),
 		Cache:            cacheOpts,
+		Client: client.Options{
+			Cache: &client.CacheOptions{
+				Unstructured: false, // so that we do not cache unstructureds by default
+			},
+		},
 	})
 	if err != nil {
 		return fmt.Errorf("failed to create controller manager: %s", err)
@@ -294,12 +324,19 @@ func mainErr() (retErr error) {
 		),
 	}
 
-	if err = model.NewReconciler(mgr.GetClient(), mgr.GetEventRecorderFor("model-controller"), httpCli, tp).SetupWithManager(mgr, tp); err != nil {
+	if err = model.NewReconciler(
+		mgr.GetClient(),
+		mgr.GetEventRecorderFor("model-controller"),
+		httpCli,
+		tp,
+	).SetupWithManager(mgr, tp); err != nil {
 		return fmt.Errorf("failed to create Model controller: %s", err)
 	}
 	if err = prompt.NewReconciler(
 		mgr.GetClient(),
 		mgr.GetEventRecorderFor("prompt-controller"),
+		httpCli,
+		tp,
 	).SetupWithManager(mgr, tp); err != nil {
 		return fmt.Errorf("failed to create Prompt controller: %s", err)
 	}

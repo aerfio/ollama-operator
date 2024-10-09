@@ -39,7 +39,6 @@ type ModelStatus struct {
 	xpv1.ResourceStatus `json:",inline"`
 	OllamaImage         string              `json:"ollamaImage,omitempty"`
 	OllamaModelDetails  *OllamaModelDetails `json:"modelDetails,omitempty"`
-	ObservedGeneration  int64               `json:"observedGeneration,omitempty"`
 }
 
 type OllamaModelDetails struct {

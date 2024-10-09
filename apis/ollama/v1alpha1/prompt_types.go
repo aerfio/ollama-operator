@@ -27,7 +27,8 @@ import (
 // PromptSpec defines the desired state of Prompt
 type PromptSpec struct {
 	ModelRef ModelRef `json:"modelRef"`
-	Prompt   string   `json:"prompt"`
+
+	Prompt string `json:"prompt"`
 
 	// Context is the context returned from previous prompt. Copy it from .status.context of previously run prompt. Optional field
 	Context string `json:"context,omitempty"`

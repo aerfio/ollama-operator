@@ -1,4 +1,4 @@
-package ollama
+package ollamaclient
 
 import (
 	"context"
@@ -14,6 +14,7 @@ type TracingAwareClient interface {
 	Show(ctx context.Context, req *ollamaapi.ShowRequest) (*ollamaapi.ShowResponse, error)
 	List(ctx context.Context) (*ollamaapi.ListResponse, error)
 	Pull(ctx context.Context, req *ollamaapi.PullRequest, progressFunc ollamaapi.PullProgressFunc) error
+	Generate(ctx context.Context, req *ollamaapi.GenerateRequest, progressFunc ollamaapi.GenerateResponseFunc) error
 }
 
 func NewTracingAwareClient(wrapped *ollamaapi.Client, tracer trace.Tracer) TracingAwareClient {
@@ -26,6 +27,19 @@ func NewTracingAwareClient(wrapped *ollamaapi.Client, tracer trace.Tracer) Traci
 type tracingAwareClient struct {
 	wrapped *ollamaapi.Client
 	tracer  trace.Tracer
+}
+
+func (t *tracingAwareClient) Generate(ctx context.Context, req *ollamaapi.GenerateRequest, progressFunc ollamaapi.GenerateResponseFunc) error {
+	ctx, span := t.tracer.Start(ctx, "generate")
+	defer span.End()
+
+	err := t.wrapped.Generate(ctx, req, progressFunc)
+	if err != nil {
+		k8stracing.SetSpanErr(span, err)
+		return err
+	}
+	span.SetStatus(codes.Ok, "success")
+	return nil
 }
 
 func (t *tracingAwareClient) List(ctx context.Context) (*ollamaapi.ListResponse, error) {

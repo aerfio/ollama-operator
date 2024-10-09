@@ -20,11 +20,8 @@ import (
 	"cmp"
 	"context"
 	"fmt"
-	"net"
 	"net/http"
-	"net/url"
 	"slices"
-	"strconv"
 	"strings"
 	"time"
 
@@ -45,6 +42,7 @@ import (
 	applycorev1 "k8s.io/client-go/applyconfigurations/core/v1"
 	applymetav1 "k8s.io/client-go/applyconfigurations/meta/v1"
 	"k8s.io/client-go/tools/record"
+	"k8s.io/kubectl/pkg/cmd/util/podcmd"
 	"k8s.io/kubectl/pkg/polymorphichelpers"
 	"k8s.io/utils/ptr"
 	ctrl "sigs.k8s.io/controller-runtime"
@@ -52,10 +50,12 @@ import (
 	"sigs.k8s.io/controller-runtime/pkg/reconcile"
 
 	ollamav1alpha1 "aerf.io/ollama-operator/apis/ollama/v1alpha1"
+	"aerf.io/ollama-operator/internal/applyconfig"
+	"aerf.io/ollama-operator/internal/commonmeta"
 	"aerf.io/ollama-operator/internal/defaults"
 	"aerf.io/ollama-operator/internal/eventrecorder"
+	"aerf.io/ollama-operator/internal/ollamaclient"
 	"aerf.io/ollama-operator/internal/patches"
-	"aerf.io/ollama-operator/internal/tracing/ollama"
 
 	"aerf.io/k8sutils"
 	"aerf.io/k8sutils/k8stracing"
@@ -63,29 +63,21 @@ import (
 )
 
 type Reconciler struct {
-	client         client.Client
-	recorder       record.EventRecorder
-	baseHTTPClient *http.Client
-	tp             trace.TracerProvider
+	client               client.Client
+	recorder             record.EventRecorder
+	baseHTTPClient       *http.Client
+	tp                   trace.TracerProvider
+	ollamaClientProvider *ollamaclient.Provider
 }
 
 func NewReconciler(cli client.Client, recorder record.EventRecorder, baseHTTPClient *http.Client, tp trace.TracerProvider) *Reconciler {
 	return &Reconciler{
-		client:         client.WithFieldOwner(cli, "ollama-operator.model-controller"),
-		recorder:       recorder,
-		baseHTTPClient: baseHTTPClient,
-		tp:             tp,
+		client:               client.WithFieldOwner(cli, "ollama-operator.model-controller"),
+		recorder:             recorder,
+		baseHTTPClient:       baseHTTPClient,
+		tp:                   tp,
+		ollamaClientProvider: ollamaclient.NewProvider(baseHTTPClient, tp.Tracer("ollama-client")),
 	}
-}
-
-func (r *Reconciler) ollamaClientForModel(model *ollamav1alpha1.Model) ollama.TracingAwareClient {
-	u := &url.URL{
-		Scheme: "http",
-		// use orbstack k8s locally to run that llm container
-		Host: net.JoinHostPort(fmt.Sprintf("%s.%s.svc.cluster.local", model.GetName(), model.GetNamespace()), strconv.Itoa(defaults.OllamaPort)),
-	}
-
-	return ollama.NewTracingAwareClient(ollamaapi.NewClient(u, r.baseHTTPClient), r.tp.Tracer("ollama-client"))
 }
 
 func (r *Reconciler) apply(ctx context.Context, obj *unstructured.Unstructured, opts ...client.PatchOption) error {
@@ -116,17 +108,11 @@ func (r *Reconciler) Reconcile(ctx context.Context, model *ollamav1alpha1.Model)
 	log.V(1).Info("Reconciling Model", "object", model)
 	recorder := r.eventRecorderFor(model)
 
-	ollamaCli := r.ollamaClientForModel(model)
+	ollamaCli := r.ollamaClientProvider.ForModel(model)
 
 	resources, err := Resources(model)
 	if err != nil {
 		return ctrl.Result{}, err
-	}
-
-	for i := range resources {
-		if err := r.setControllerReference(model, resources[i]); err != nil {
-			return ctrl.Result{}, err
-		}
 	}
 
 	for _, res := range resources {
@@ -227,39 +213,37 @@ func isStatefulSetReady(sts *appsv1.StatefulSet) (string, bool, error) {
 
 // SetupWithManager sets up the controller with the Manager.
 func (r *Reconciler) SetupWithManager(mgr ctrl.Manager, tp trace.TracerProvider) error {
+	k8sCli := client.WithFieldOwner(
+		client.WithFieldValidation(
+			k8stracing.NewK8sClient(mgr.GetClient(), tp),
+			metav1.FieldValidationStrict),
+		"ollama-operator.prompt-controller")
+
 	return ctrl.NewControllerManagedBy(mgr).
 		For(&ollamav1alpha1.Model{}).
 		Owns(&appsv1.StatefulSet{}).
 		Owns(&corev1.Service{}).
 		Complete(
 			utilreconcilers.NewWithTracingReconciler(
-				errors.WithSilentRequeueOnConflict(
-					reconcile.AsReconciler[*ollamav1alpha1.Model](
-						k8stracing.NewK8sClient(mgr.GetClient(), tp),
-						r,
-					),
-				),
+				errors.WithSilentRequeueOnConflict(reconcile.AsReconciler[*ollamav1alpha1.Model](k8sCli, r)),
 				tp.Tracer("model-controller", trace.WithInstrumentationAttributes(attribute.Stringer("controller-gvk", ollamav1alpha1.ModelGroupVersionKind))),
 			),
 		)
 }
 
-func (r *Reconciler) setControllerReference(model *ollamav1alpha1.Model, controlled metav1.Object) error {
-	return ctrl.SetControllerReference(model, controlled, r.client.Scheme())
-}
-
 func Resources(model *ollamav1alpha1.Model) ([]*unstructured.Unstructured, error) {
-	labels := map[string]string{
+	labels := commonmeta.LabelsForResource(model.GetName(), map[string]string{
 		"ollama.aerf.io/model": model.GetName(),
-	}
+	})
 	httpAPIPortName := "http-api"
-
+	containerName := "ollama"
 	sts := applyappsv1.StatefulSet(model.GetName(), model.GetNamespace()).
+		WithLabels(labels).
+		WithOwnerReferences(
+			applyconfig.ControllerReferenceFrom(model)).
 		WithSpec(
 			applyappsv1.StatefulSetSpec().
-				WithSelector(
-					applymetav1.LabelSelector().WithMatchLabels(labels),
-				).
+				WithSelector(applymetav1.LabelSelector().WithMatchLabels(labels)).
 				WithServiceName(model.GetName()).
 				WithReplicas(1).
 				WithVolumeClaimTemplates(
@@ -279,10 +263,13 @@ func Resources(model *ollamav1alpha1.Model) ([]*unstructured.Unstructured, error
 				).WithTemplate(
 				applycorev1.PodTemplateSpec().
 					WithLabels(labels).
+					WithAnnotations(map[string]string{
+						podcmd.DefaultContainerAnnotationName: containerName,
+					}).
 					WithSpec(applycorev1.PodSpec().
 						WithContainers(
 							applycorev1.Container().
-								WithName("ollama").
+								WithName(containerName).
 								WithImage(cmp.Or(model.Spec.OllamaImage, defaults.OllamaImage)).
 								WithImagePullPolicy(corev1.PullIfNotPresent).
 								WithPorts(
@@ -330,6 +317,7 @@ func Resources(model *ollamav1alpha1.Model) ([]*unstructured.Unstructured, error
 
 	svc := applycorev1.Service(model.GetName(), model.GetNamespace()).
 		WithLabels(labels).
+		WithOwnerReferences(applyconfig.ControllerReferenceFrom(model)).
 		WithSpec(
 			applycorev1.ServiceSpec().
 				WithType(corev1.ServiceTypeClusterIP).

@@ -4,13 +4,6 @@ metadata:
   name: phi3
 spec:
   model: phi3:3.8b
-  resources:
-    requests:
-      cpu: 3
-      memory: 8Gi
-    limits:
-      cpu: 3
-      memory: 8Gi
 ---
 apiVersion: ollama.aerf.io/v1alpha1
 kind: Prompt
