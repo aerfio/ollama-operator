@@ -164,8 +164,9 @@ func (r *Reconciler) Reconcile(ctx context.Context, model *ollamav1alpha1.Model)
 		pullResp := ollamaapi.ProgressResponse{}
 		if err := ollamaCli.Pull(ctx, &ollamaapi.PullRequest{
 			Model:  model.Spec.Model,
-			Stream: ptr.To(false),
+			Stream: ptr.To(true),
 		}, func(resp ollamaapi.ProgressResponse) error {
+			log.V(2).Info("pulling model...", "progressResponse", resp)
 			pullResp = resp
 			return nil
 		}); err != nil {
@@ -245,7 +246,8 @@ func Resources(model *ollamav1alpha1.Model) ([]*unstructured.Unstructured, error
 			applyappsv1.StatefulSetSpec().
 				WithSelector(applymetav1.LabelSelector().WithMatchLabels(labels)).
 				WithServiceName(model.GetName()).
-				WithReplicas(1).
+				WithReplicas(1). // do NOT adapt this field, the current logic only allows for replicas=1
+				WithMinReadySeconds(10).
 				WithVolumeClaimTemplates(
 					applycorev1.PersistentVolumeClaim(model.GetName()+"-ollama-root", model.GetNamespace()).
 						WithSpec(
