@@ -40,8 +40,8 @@ func main() {
 
 	if cli.OnlyDiff {
 		modelNoPatches := model.DeepCopy()
-		modelNoPatches.Spec.Service = nil
-		modelNoPatches.Spec.StatefulSet = nil
+		modelNoPatches.Spec.ServicePatches = nil
+		modelNoPatches.Spec.StatefulSetPatches = nil
 
 		noPatchesResources, err := modelcontroller.Resources(modelNoPatches)
 		kctx.FatalIfErrorf(err, "unable to create resources out of model instance")

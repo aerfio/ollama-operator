@@ -11,10 +11,10 @@ import (
 	"k8s.io/apimachinery/pkg/apis/meta/v1/unstructured"
 	kjson "sigs.k8s.io/json"
 
-	cmnv1alpha1 "aerf.io/ollama-operator/apis/common/v1alpha1"
+	ollamav1alpha1 "aerf.io/ollama-operator/apis/ollama/v1alpha1"
 )
 
-func Apply(resource any, patches *cmnv1alpha1.Patches) (any, error) {
+func Apply(resource any, patches *ollamav1alpha1.Patches) (any, error) {
 	if patches == nil {
 		return resource, nil
 	}
@@ -30,7 +30,7 @@ func Apply(resource any, patches *cmnv1alpha1.Patches) (any, error) {
 	return jsonPatched, nil
 }
 
-func ApplyMerge(obj any, patches *cmnv1alpha1.MergePatch) (any, error) {
+func ApplyMerge(obj any, patches *ollamav1alpha1.MergePatch) (any, error) {
 	if patches == nil || patches.MergePatch == nil {
 		return obj, nil
 	}
@@ -59,7 +59,7 @@ func ApplyMerge(obj any, patches *cmnv1alpha1.MergePatch) (any, error) {
 	return obj, errors.WithMessage(mergo.Merge(obj, emptyObj, mergo.WithOverride), "failed to apply merge patch")
 }
 
-func ApplyJSONPatch(obj any, patches *cmnv1alpha1.JSONPatch) (any, error) {
+func ApplyJSONPatch(obj any, patches *ollamav1alpha1.JSONPatch) (any, error) {
 	if patches == nil || len(patches.JSONPatch) == 0 {
 		return obj, nil
 	}
