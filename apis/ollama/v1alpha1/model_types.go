@@ -19,8 +19,6 @@ package v1alpha1
 import (
 	xpv1 "github.com/crossplane/crossplane-runtime/apis/common/v1"
 	metav1 "k8s.io/apimachinery/pkg/apis/meta/v1"
-
-	cmnv1alpha1 "aerf.io/ollama-operator/apis/common/v1alpha1"
 )
 
 // ModelSpec defines the desired state of Model
@@ -29,16 +27,21 @@ type ModelSpec struct {
 	OllamaImage string `json:"ollamaImage,omitempty"`
 
 	// Model like phi3, llama3.1 etc
-	Model       string               `json:"model"`
-	StatefulSet *cmnv1alpha1.Patches `json:"statefulSetPatches,omitempty"`
-	Service     *cmnv1alpha1.Patches `json:"servicePatches,omitempty"`
+	Model              string   `json:"model"`
+	StatefulSetPatches *Patches `json:"statefulSetPatches,omitempty"`
+	ServicePatches     *Patches `json:"servicePatches,omitempty"`
 }
 
 // ModelStatus defines the observed state of Model
 type ModelStatus struct {
-	xpv1.ResourceStatus `json:",inline"`
-	OllamaImage         string              `json:"ollamaImage,omitempty"`
-	OllamaModelDetails  *OllamaModelDetails `json:"modelDetails,omitempty"`
+	xpv1.ConditionedStatus `json:",inline"`
+	// ObservedGeneration is the latest metadata.generation
+	// which resulted in either a ready state, or stalled due to error
+	// it can not recover from without human intervention.
+	// +optional
+	ObservedGeneration int64               `json:"observedGeneration,omitempty"`
+	OllamaImage        string              `json:"ollamaImage,omitempty"`
+	OllamaModelDetails *OllamaModelDetails `json:"modelDetails,omitempty"`
 }
 
 type OllamaModelDetails struct {
@@ -50,6 +53,7 @@ type OllamaModelDetails struct {
 	Families          []string `json:"families,omitempty"`
 }
 
+// +genclient
 // +kubebuilder:object:root=true
 // +kubebuilder:subresource:status
 // +kubebuilder:printcolumn:name="MODEL",type="string",JSONPath=".spec.model"
@@ -89,8 +93,4 @@ type ModelList struct {
 	Items           []Model `json:"items"`
 }
 
-var ModelGroupVersionKind = GroupVersion.WithKind("Model")
-
-func init() {
-	SchemeBuilder.Register(&Model{}, &ModelList{})
-}
+var ModelGroupVersionKind = SchemeGroupVersion.WithKind("Model")

@@ -13,7 +13,7 @@ import (
 	applymetav1 "k8s.io/client-go/applyconfigurations/meta/v1"
 	"sigs.k8s.io/yaml"
 
-	cmnv1alpha1 "aerf.io/ollama-operator/apis/common/v1alpha1"
+	ollamav1alpha1 "aerf.io/ollama-operator/apis/ollama/v1alpha1"
 	"aerf.io/ollama-operator/internal/patches"
 )
 
@@ -104,7 +104,7 @@ mergePatch:
 	}
 	for name, tt := range tests {
 		t.Run(name, func(t *testing.T) {
-			ptch := &cmnv1alpha1.MergePatch{}
+			ptch := &ollamav1alpha1.MergePatch{}
 			if tt.patch != "" {
 				require.NoError(t, yaml.Unmarshal([]byte(strings.NewReplacer("\t", "  ").Replace(tt.patch)), ptch))
 			} else {
@@ -205,7 +205,7 @@ func TestApplyJSONPatch(t *testing.T) {
 	}
 	for name, tt := range tests {
 		t.Run(name, func(t *testing.T) {
-			ptch := &cmnv1alpha1.JSONPatch{}
+			ptch := &ollamav1alpha1.JSONPatch{}
 			if tt.patch != "" {
 				require.NoError(t, yaml.Unmarshal([]byte(strings.NewReplacer("\t", "  ").Replace(tt.patch)), ptch))
 			} else {
@@ -232,7 +232,7 @@ func TestApply(t *testing.T) {
 	tests := map[string]struct {
 		resource string
 		want     string
-		patches  *cmnv1alpha1.Patches
+		patches  *ollamav1alpha1.Patches
 		wantErr  bool
 	}{
 		"SimplePodPatchWithUnstructured": {
@@ -253,9 +253,9 @@ spec:
   restartPolicy: Always
 status: {}
 `,
-			patches: &cmnv1alpha1.Patches{
-				JSONPatch: cmnv1alpha1.JSONPatch{
-					JSONPatch: []cmnv1alpha1.JSONPatchOperation{
+			patches: &ollamav1alpha1.Patches{
+				JSONPatch: ollamav1alpha1.JSONPatch{
+					JSONPatch: []ollamav1alpha1.JSONPatchOperation{
 						{
 							Op:    "add",
 							Path:  "/metadata/labels/app",
@@ -263,7 +263,7 @@ status: {}
 						},
 					},
 				},
-				MergePatch: cmnv1alpha1.MergePatch{
+				MergePatch: ollamav1alpha1.MergePatch{
 					MergePatch: &runtime.RawExtension{Raw: []byte(`{"spec":{"dnsPolicy": "ClusterFirstWithHostNet"}}`)},
 				},
 			},

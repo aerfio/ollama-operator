@@ -333,11 +333,11 @@ func Resources(model *ollamav1alpha1.Model) ([]*unstructured.Unstructured, error
 				WithSelector(labels),
 		)
 
-	patchedSts, err := patches.Apply(sts, model.Spec.StatefulSet)
+	patchedSts, err := patches.Apply(sts, model.Spec.StatefulSetPatches)
 	if err != nil {
 		return nil, err
 	}
-	patchedSvc, err := patches.Apply(svc, model.Spec.Service)
+	patchedSvc, err := patches.Apply(svc, model.Spec.ServicePatches)
 	if err != nil {
 		return nil, err
 	}

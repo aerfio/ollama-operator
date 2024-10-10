@@ -20,8 +20,6 @@ import (
 	xpv1 "github.com/crossplane/crossplane-runtime/apis/common/v1"
 	metav1 "k8s.io/apimachinery/pkg/apis/meta/v1"
 	"k8s.io/apimachinery/pkg/runtime"
-
-	cmnv1alpha1 "aerf.io/ollama-operator/apis/common/v1alpha1"
 )
 
 // PromptSpec defines the desired state of Prompt
@@ -48,9 +46,9 @@ type PromptSpec struct {
 
 // TODO cel expression that only 1 field should be set
 type ImageSource struct {
-	Inline          *ImageData                        `json:"inline,omitempty"`
-	SecretKeyRef    *xpv1.SecretKeySelector           `json:"secretKeyRef,omitempty"`
-	ConfigMapKeyRef *cmnv1alpha1.ConfigMapKeySelector `json:"configMapKeyRef,omitempty"`
+	Inline          *ImageData              `json:"inline,omitempty"`
+	SecretKeyRef    *xpv1.SecretKeySelector `json:"secretKeyRef,omitempty"`
+	ConfigMapKeyRef *ConfigMapKeySelector   `json:"configMapKeyRef,omitempty"`
 }
 
 // +kubebuilder:validation:Enum=gzip;zstd;none
@@ -77,7 +75,12 @@ type ModelRef struct {
 
 // PromptStatus defines the observed state of Model
 type PromptStatus struct {
-	xpv1.ResourceStatus   `json:",inline"`
+	xpv1.ConditionedStatus `json:",inline"`
+	// ObservedGeneration is the latest metadata.generation
+	// which resulted in either a ready state, or stalled due to error
+	// it can not recover from without human intervention.
+	// +optional
+	ObservedGeneration    int64                  `json:"observedGeneration,omitempty"`
 	Response              string                 `json:"response,omitempty"`
 	Context               string                 `json:"context,omitempty"`
 	PromptResponseMeta    *PromptResponseMeta    `json:"meta,omitempty"`
@@ -99,6 +102,7 @@ type PromptResponseMetrics struct {
 	EvalRate           string          `json:"evalRate,omitempty"`
 }
 
+// +genclient
 // +kubebuilder:object:root=true
 // +kubebuilder:subresource:status
 // +kubebuilder:printcolumn:name="MODEL_REF_NAME",type="string",JSONPath=".spec.modelRef.name"
@@ -138,8 +142,4 @@ type PromptList struct {
 	Items           []Prompt `json:"items"`
 }
 
-var PromptGroupVersionKind = GroupVersion.WithKind("Prompt")
-
-func init() {
-	SchemeBuilder.Register(&Prompt{}, &PromptList{})
-}
+var PromptGroupVersionKind = SchemeGroupVersion.WithKind("Prompt")
