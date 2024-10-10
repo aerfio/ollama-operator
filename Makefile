@@ -30,7 +30,7 @@ help: ## Display this help.
 ##@ Development
 
 .PHONY: generate
-generate: manifests generate-deep-copy k8s-client-gen k8s-register-gen
+generate: manifests generate-deep-copy k8s-client-gen k8s-register-gen k8s-gvk-gen
 
 .PHONY: manifests
 manifests: controller-gen ## Generate WebhookConfiguration, ClusterRole and CustomResourceDefinition objects.
@@ -70,6 +70,10 @@ k8s-client-gen: applyconfiguration-gen
 k8s-register-gen: register-gen
 	@echo ">> generating generated.register.go..."
 	$(REGISTER_GEN) $(API_DIRS)
+
+.PHONY: k8s-gvk-gen
+k8s-gvk-gen:
+	go run ./cmd/generators/gvk-gen $(API_DIRS)
 
 ##@ Build
 

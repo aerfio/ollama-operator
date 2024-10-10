@@ -141,5 +141,3 @@ type PromptList struct {
 	metav1.ListMeta `json:"metadata,omitempty"`
 	Items           []Prompt `json:"items"`
 }
-
-var PromptGroupVersionKind = SchemeGroupVersion.WithKind("Prompt")
