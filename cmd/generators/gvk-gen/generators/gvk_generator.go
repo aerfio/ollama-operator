@@ -128,7 +128,4 @@ func addKnownTypes(scheme *runtime.Scheme) error {
 	$.addToGroupVersion|raw$(scheme, SchemeGroupVersion)
 	return nil
 }
-$range .types -$
-const $.$ = "data"
-$end$
 `
