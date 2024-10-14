@@ -3,4 +3,9 @@ kind: Model
 metadata:
   name: gemma2-2b
 spec:
+  recreateOnImmutableError: true
   model: gemma2:2b
+  statefulSetPatches:
+    mergePatch:
+      spec:
+        revisionHistoryLimit: 2

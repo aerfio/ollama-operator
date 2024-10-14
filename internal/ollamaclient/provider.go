@@ -14,6 +14,10 @@ import (
 	"aerf.io/ollama-operator/internal/defaults"
 )
 
+type ClientProvider interface {
+	ForModel(model metav1.Object) TracingAwareClient
+}
+
 func NewProvider(baseHTTPClient *http.Client, tracer trace.Tracer) *Provider {
 	return &Provider{
 		baseHTTPClient: baseHTTPClient,
