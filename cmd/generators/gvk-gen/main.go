@@ -30,18 +30,20 @@ import (
 
 func main() {
 	klog.InitFlags(nil)
-	args := args.New()
-	args.AddFlags(pflag.CommandLine)
-	flag.Set("logtostderr", "true")
+	appArgs := args.New()
+	appArgs.AddFlags(pflag.CommandLine)
+	if err := flag.Set("logtostderr", "true"); err != nil {
+		klog.Fatalf("Error: %s", err)
+	}
 	pflag.CommandLine.AddGoFlagSet(flag.CommandLine)
-
 	pflag.Parse()
-	if err := args.Validate(); err != nil {
+	klog.InfoS("appArgs", "struct", appArgs)
+	if err := appArgs.Validate(); err != nil {
 		klog.Fatalf("Error: %v", err)
 	}
 
 	myTargets := func(context *generator.Context) []generator.Target {
-		return generators.GetTargets(context, args)
+		return generators.GetTargets(context, appArgs)
 	}
 
 	if err := gengo.Execute(

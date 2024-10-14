@@ -43,8 +43,8 @@ func DefaultNameSystem() string {
 }
 
 // GetTargets makes targets to generate.
-func GetTargets(context *generator.Context, args *args.Args) []generator.Target {
-	boilerplate, err := gengo.GoBoilerplate(args.GoHeaderFile, gengo.StdBuildTag, gengo.StdGeneratedBy)
+func GetTargets(context *generator.Context, appArgs *args.Args) []generator.Target {
+	boilerplate, err := gengo.GoBoilerplate(appArgs.GoHeaderFile, gengo.StdBuildTag, gengo.StdGeneratedBy)
 	if err != nil {
 		klog.Fatalf("Failed loading boilerplate: %v", err)
 	}
@@ -54,11 +54,11 @@ func GetTargets(context *generator.Context, args *args.Args) []generator.Target 
 		pkg := context.Universe.Package(input)
 		internal, err := isInternal(pkg)
 		if err != nil {
-			klog.V(5).Infof("skipping the generation of %s file, due to err %v", args.OutputFile, err)
+			klog.V(5).Infof("skipping the generation of %s file, due to err %v", appArgs.OutputFile, err)
 			continue
 		}
 		if internal {
-			klog.V(5).Infof("skipping the generation of %s file because %s package contains internal types, note that internal types don't have \"json\" tags", args.OutputFile, pkg.Name)
+			klog.V(5).Infof("skipping the generation of %s file because %s package contains internal types, note that internal types don't have \"json\" tags", appArgs.OutputFile, pkg.Name)
 			continue
 		}
 
@@ -92,12 +92,6 @@ func GetTargets(context *generator.Context, args *args.Args) []generator.Target 
 				return member.Embedded && member.Name == "ObjectMeta"
 			})
 
-			// if hasTypeMeta {
-			// 	for _, mem := range t.Members {
-			// 		klog.InfoS("mem", "name", t.Name, "embedded", mem.Embedded, "name", mem.Name, "tags", mem.Tags)
-			// 	}
-			// }
-
 			if hasTypeMeta && hasObjectMetadata {
 				typesToRegister = append(typesToRegister, t)
 			}
@@ -113,7 +107,7 @@ func GetTargets(context *generator.Context, args *args.Args) []generator.Target 
 					return []generator.Generator{
 						&registerExternalGenerator{
 							GoGenerator: generator.GoGenerator{
-								OutputFilename: args.OutputFile,
+								OutputFilename: appArgs.OutputFile,
 							},
 							gv:              gv,
 							typesToGenerate: typesToRegister,

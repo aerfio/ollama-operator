@@ -42,7 +42,7 @@ func (args *Args) AddFlags(fs *pflag.FlagSet) {
 
 // Validate checks the given arguments.
 func (args *Args) Validate() error {
-	if len(args.OutputFile) == 0 {
+	if args.OutputFile == "" {
 		return fmt.Errorf("output file base name cannot be empty")
 	}
 

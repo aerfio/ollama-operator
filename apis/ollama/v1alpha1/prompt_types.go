@@ -60,7 +60,7 @@ const (
 	ImageFormatZstd ImageFormat = "zstd"
 )
 
-var ImageFormatAll = []ImageFormat{ImageFormatGzip, ImageFormatZstd}
+var ImageFormatAll = []ImageFormat{ImageFormatGzip, ImageFormatZstd, ImageFormatNone}
 
 type ImageData struct {
 	Format ImageFormat `json:"format,omitempty"`

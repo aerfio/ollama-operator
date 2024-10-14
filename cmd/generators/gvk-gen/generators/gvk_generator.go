@@ -61,7 +61,7 @@ func (g *registerExternalGenerator) Finalize(context *generator.Context, w io.Wr
 	sort.Strings(typesToGenerateOnlyNames)
 
 	sw := generator.NewSnippetWriter(w, context, "$", "$")
-	m := map[string]interface{}{
+	m := map[string]any{
 		// "groupName":         g.gv.Group,
 		// "version":           g.gv.Version,
 		"types": typesToGenerateOnlyNames,
@@ -84,48 +84,4 @@ $range .types -$
 	$.$GroupVersionKind = SchemeGroupVersion.WithKind($.$Kind)
 $end$
 )
-`
-
-const oldtmpl = `// GroupName specifies the group name used to register the objects.
-const GroupName = "$.groupName$"
-
-// GroupVersion specifies the group and the version used to register the objects.
-var GroupVersion = $.groupVersion|raw${Group: GroupName, Version: "$.version$"}
-
-// SchemeGroupVersion is group version used to register these objects
-// Deprecated: use GroupVersion instead.
-var SchemeGroupVersion = schema.GroupVersion{Group: GroupName, Version: "$.version$"}
-
-// Resource takes an unqualified resource and returns a Group qualified GroupResource
-func Resource(resource string) schema.GroupResource {
-	return SchemeGroupVersion.WithResource(resource).GroupResource()
-}
-
-var (
-	// localSchemeBuilder and AddToScheme will stay in k8s.io/kubernetes.
-	SchemeBuilder      runtime.SchemeBuilder
-	localSchemeBuilder = &SchemeBuilder
-    // Deprecated: use Install instead
-	AddToScheme        = localSchemeBuilder.AddToScheme
-	Install            = localSchemeBuilder.AddToScheme
-)
-
-func init() {
-	// We only register manually written functions here. The registration of the
-	// generated functions takes place in the generated files. The separation
-	// makes the code compile even when the generated files are missing.
-	localSchemeBuilder.Register(addKnownTypes)
-}
-
-// Adds the list of known types to Scheme.
-func addKnownTypes(scheme *runtime.Scheme) error {
-	scheme.AddKnownTypes(SchemeGroupVersion,
-    $range .types -$
-        &$.${},
-    $end$
-	)
-    // AddToGroupVersion allows the serialization of client types like ListOptions.
-	$.addToGroupVersion|raw$(scheme, SchemeGroupVersion)
-	return nil
-}
 `
