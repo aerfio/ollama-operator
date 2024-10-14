@@ -86,7 +86,7 @@ k8s-register-gen: register-gen
 .PHONY: k8s-gvk-gen
 k8s-gvk-gen:
 	@echo ">> Generating generate.gvk.go"
-	@go run ./cmd/generators/gvk-gen $(API_DIRS)
+	@go run ./cmd/gvk-gen $(API_DIRS)
 
 ##@ Build
 

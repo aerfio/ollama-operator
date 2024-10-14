@@ -24,8 +24,8 @@ import (
 	"k8s.io/gengo/v2/generator"
 	"k8s.io/klog/v2"
 
-	"aerf.io/ollama-operator/cmd/generators/gvk-gen/args"
-	"aerf.io/ollama-operator/cmd/generators/gvk-gen/generators"
+	"aerf.io/ollama-operator/cmd/gvk-gen/args"
+	"aerf.io/ollama-operator/cmd/gvk-gen/generators"
 )
 
 func main() {

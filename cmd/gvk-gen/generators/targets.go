@@ -28,7 +28,7 @@ import (
 	"k8s.io/gengo/v2/types"
 	"k8s.io/klog/v2"
 
-	"aerf.io/ollama-operator/cmd/generators/gvk-gen/args"
+	"aerf.io/ollama-operator/cmd/gvk-gen/args"
 )
 
 // NameSystems returns the name system used by the generators in this package.
