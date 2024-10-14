@@ -7,6 +7,12 @@ KO_DOCKER_REPO ?= ko.local
 SHELL = /usr/bin/env bash -o pipefail
 .SHELLFLAGS = -ec
 
+ifeq ($(OS),Windows_NT)
+	detected_OS := Windows
+else
+	detected_OS := $(shell sh -c 'uname 2>/dev/null || echo Unknown')
+endif
+
 .PHONY: all
 all: generate build test lint-fix
 
@@ -41,8 +47,14 @@ generate-deep-copy: controller-gen ## Generate code containing DeepCopy, DeepCop
 	$(CONTROLLER_GEN) object paths="./..."
 
 .PHONY: test
+test: export GOTESTFLAGS ?= -race
+ifeq ($(detected_OS),Darwin) # see https://github.com/golang/go/issues/61229#issuecomment-1988965927, there are too many useless linker warnings that cant be fixed on Go side, waiting for Apple fix
+test: GOTESTFLAGS += -ldflags=-linkmode=internal
+endif
+test: export KUBEBUILDER_CONTROLPLANE_START_TIMEOUT ?= 5m
+test: export KUBEBUILDER_CONTROLPLANE_STOP_TIMEOUT ?= 5m
 test: manifests generate-deep-copy envtest gotestsum ## Run tests.
-	KUBEBUILDER_ASSETS="$(shell $(ENVTEST) use $(ENVTEST_K8S_VERSION) --bin-dir $(LOCALBIN) -p path)" $(GOTESTSUM) --format testdox --format-hide-empty-pkg  --format-icons hivis -- -race ./...
+	KUBEBUILDER_ASSETS="$(shell $(ENVTEST) use $(ENVTEST_K8S_VERSION) --bin-dir $(LOCALBIN) -p path)" $(GOTESTSUM) --format testdox --format-hide-empty-pkg  --format-icons hivis -- $(GOTESTFLAGS) ./...
 
 .PHONY: lint
 lint: golangci-lint ## Run golangci-lint linter
@@ -61,7 +73,7 @@ API_DIRS = $(shell find apis -mindepth 2 -type d | sed "s|^|$(shell go list -m)/
 .PHONY: k8s-client-gen
 k8s-client-gen: applyconfiguration-gen
 	@echo ">> generating internal/client/applyconfiguration..."
-	$(APPLYCONFIGURATION_GEN) \
+	@$(APPLYCONFIGURATION_GEN) \
 		--output-dir "internal/client/applyconfiguration" \
 		--output-pkg "$(GO_MODULE)/internal/client/applyconfiguration" \
 		$(API_DIRS)
@@ -69,7 +81,7 @@ k8s-client-gen: applyconfiguration-gen
 .PHONY: k8s-register-gen
 k8s-register-gen: register-gen
 	@echo ">> generating generated.register.go..."
-	$(REGISTER_GEN) $(API_DIRS)
+	@$(REGISTER_GEN) $(API_DIRS)
 
 ##@ Build
 
@@ -107,7 +119,7 @@ GOTESTSUM = $(LOCALBIN)/gotestsum
 
 # renovate: datasource=github-releases depName=kubernetes-sigs/controller-tools
 CONTROLLER_TOOLS_VERSION ?= v0.16.3
-ENVTEST_VERSION ?= release-0.18
+ENVTEST_VERSION ?= release-0.19
 # renovate: datasource=github-releases depName=golangci/golangci-lint
 GOLANGCI_LINT_VERSION ?= v1.61.0
 # renovate: datasource=github-releases depName=ko-build/ko
@@ -150,7 +162,7 @@ $(APPLYCONFIGURATION_GEN): $(LOCALBIN)
 .PHONY: register-gen
 register-gen: $(REGISTER_GEN) ## Download register-gen locally if necessary.
 $(REGISTER_GEN): $(LOCALBIN)
-	$(call go-install-tool,$(APPLYCONFIGURATION_GEN),k8s.io/code-generator/cmd/register-gen,$(CODE_GENERATOR_VERSION))
+	$(call go-install-tool,$(REGISTER_GEN),k8s.io/code-generator/cmd/register-gen,$(CODE_GENERATOR_VERSION))
 
 # go-install-tool will 'go install' any package with custom target and name of binary, if it doesn't exist
 # $1 - target path with name of binary
