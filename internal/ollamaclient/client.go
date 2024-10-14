@@ -10,14 +10,14 @@ import (
 	"aerf.io/k8sutils/k8stracing"
 )
 
-type TracingAwareClient interface {
+type Interface interface {
 	Show(ctx context.Context, req *ollamaapi.ShowRequest) (*ollamaapi.ShowResponse, error)
 	List(ctx context.Context) (*ollamaapi.ListResponse, error)
 	Pull(ctx context.Context, req *ollamaapi.PullRequest, progressFunc ollamaapi.PullProgressFunc) error
 	Generate(ctx context.Context, req *ollamaapi.GenerateRequest, progressFunc ollamaapi.GenerateResponseFunc) error
 }
 
-func NewTracingAwareClient(wrapped *ollamaapi.Client, tracer trace.Tracer) TracingAwareClient {
+func NewTracingAwareClient(wrapped Interface, tracer trace.Tracer) Interface {
 	return &tracingAwareClient{
 		wrapped: wrapped,
 		tracer:  tracer,
@@ -25,7 +25,7 @@ func NewTracingAwareClient(wrapped *ollamaapi.Client, tracer trace.Tracer) Traci
 }
 
 type tracingAwareClient struct {
-	wrapped *ollamaapi.Client
+	wrapped Interface
 	tracer  trace.Tracer
 }
 
