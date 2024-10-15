@@ -5,10 +5,11 @@ package v1alpha1
 // ModelSpecApplyConfiguration represents a declarative configuration of the ModelSpec type for use
 // with apply.
 type ModelSpecApplyConfiguration struct {
-	OllamaImage        *string                    `json:"ollamaImage,omitempty"`
-	Model              *string                    `json:"model,omitempty"`
-	StatefulSetPatches *PatchesApplyConfiguration `json:"statefulSetPatches,omitempty"`
-	ServicePatches     *PatchesApplyConfiguration `json:"servicePatches,omitempty"`
+	OllamaImage              *string                    `json:"ollamaImage,omitempty"`
+	RecreateOnImmutableError *bool                      `json:"recreateOnImmutableError,omitempty"`
+	Model                    *string                    `json:"model,omitempty"`
+	StatefulSetPatches       *PatchesApplyConfiguration `json:"statefulSetPatches,omitempty"`
+	ServicePatches           *PatchesApplyConfiguration `json:"servicePatches,omitempty"`
 }
 
 // ModelSpecApplyConfiguration constructs a declarative configuration of the ModelSpec type for use with
@@ -22,6 +23,14 @@ func ModelSpec() *ModelSpecApplyConfiguration {
 // If called multiple times, the OllamaImage field is set to the value of the last call.
 func (b *ModelSpecApplyConfiguration) WithOllamaImage(value string) *ModelSpecApplyConfiguration {
 	b.OllamaImage = &value
+	return b
+}
+
+// WithRecreateOnImmutableError sets the RecreateOnImmutableError field in the declarative configuration to the given value
+// and returns the receiver, so that objects can be built by chaining "With" function invocations.
+// If called multiple times, the RecreateOnImmutableError field is set to the value of the last call.
+func (b *ModelSpecApplyConfiguration) WithRecreateOnImmutableError(value bool) *ModelSpecApplyConfiguration {
+	b.RecreateOnImmutableError = &value
 	return b
 }
 

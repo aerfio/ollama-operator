@@ -25,7 +25,11 @@ import (
 type ModelSpec struct {
 	// https://hub.docker.com/r/ollama/ollama/tags
 	OllamaImage string `json:"ollamaImage,omitempty"`
-
+	// Patches introduced in statefulSetPatches and/or servicePatches fields might result in such an error:
+	// "spec: Forbidden: updates to statefulset spec for fields other than 'replicas', 'ordinals', 'template', 'updateStrategy', 'persistentVolumeClaimRetentionPolicy' and 'minReadySeconds' are forbidden"
+	// If the `recreateOnImmutableError` is set to true, the child statefulSet will get recreated once such an error is encountered.
+	// If not (default), this error emerges in Model's conditions
+	RecreateOnImmutableError bool `json:"recreateOnImmutableError,omitempty"`
 	// Model like phi3, llama3.1 etc
 	Model              string   `json:"model"`
 	StatefulSetPatches *Patches `json:"statefulSetPatches,omitempty"`
