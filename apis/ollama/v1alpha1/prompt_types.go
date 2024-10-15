@@ -60,7 +60,7 @@ const (
 	ImageFormatZstd ImageFormat = "zstd"
 )
 
-var ImageFormatAll = []ImageFormat{ImageFormatGzip, ImageFormatZstd}
+var ImageFormatAll = []ImageFormat{ImageFormatGzip, ImageFormatZstd, ImageFormatNone}
 
 type ImageData struct {
 	Format ImageFormat `json:"format,omitempty"`
@@ -141,5 +141,3 @@ type PromptList struct {
 	metav1.ListMeta `json:"metadata,omitempty"`
 	Items           []Prompt `json:"items"`
 }
-
-var PromptGroupVersionKind = SchemeGroupVersion.WithKind("Prompt")

@@ -214,13 +214,12 @@ func (r *Reconciler) Reconcile(ctx context.Context, model *ollamav1alpha1.Model)
 }
 
 func isStatefulSetReady(sts *appsv1.StatefulSet) (string, bool, error) {
-	content, err := runtime.DefaultUnstructuredConverter.ToUnstructured(sts)
+	unstr, err := k8sutils.ToUnstructured(sts)
 	if err != nil {
 		return "", false, err
 	}
-	// TODO consider not using kubectl codebase
 	viewer := polymorphichelpers.StatefulSetStatusViewer{}
-	msg, ready, err := viewer.Status(&unstructured.Unstructured{Object: content}, 0)
+	msg, ready, err := viewer.Status(unstr, 0)
 	if err != nil {
 		return "", false, err
 	}

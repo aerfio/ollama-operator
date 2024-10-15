@@ -15,7 +15,7 @@ import (
 )
 
 type ClientProvider interface {
-	ForModel(model metav1.Object) TracingAwareClient
+	ForModel(model metav1.Object) Interface
 }
 
 func NewProvider(baseHTTPClient *http.Client, tracer trace.Tracer) *Provider {
@@ -30,7 +30,7 @@ type Provider struct {
 	tracer         trace.Tracer
 }
 
-func (p *Provider) ForModel(model metav1.Object) TracingAwareClient {
+func (p *Provider) ForModel(model metav1.Object) Interface {
 	u := &url.URL{
 		Scheme: "http",
 		// use orbstack k8s locally to run that llm container

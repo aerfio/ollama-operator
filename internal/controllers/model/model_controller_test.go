@@ -7,6 +7,7 @@ import (
 
 	xpv1 "github.com/crossplane/crossplane-runtime/apis/common/v1"
 	"github.com/go-logr/logr/testr"
+	"github.com/stretchr/testify/assert"
 	"github.com/stretchr/testify/require"
 	"go.opentelemetry.io/otel/trace/noop"
 	appsv1 "k8s.io/api/apps/v1"
@@ -17,6 +18,7 @@ import (
 	"k8s.io/client-go/kubernetes/scheme"
 	"k8s.io/client-go/tools/record"
 	"k8s.io/client-go/util/retry"
+	"k8s.io/utils/ptr"
 	ctrl "sigs.k8s.io/controller-runtime"
 	"sigs.k8s.io/controller-runtime/pkg/client"
 	"sigs.k8s.io/controller-runtime/pkg/envtest"
@@ -26,6 +28,68 @@ import (
 	"aerf.io/ollama-operator/internal/ollamaclient"
 	"aerf.io/ollama-operator/internal/testutils"
 )
+
+func Test_isStatefulSetReady(t *testing.T) {
+	tests := []struct {
+		name        string
+		sts         *appsv1.StatefulSet
+		ready       bool
+		msgContains string
+	}{
+		{
+			name: "sts not ready - too few ready replicas",
+			sts: &appsv1.StatefulSet{
+				ObjectMeta: metav1.ObjectMeta{
+					Generation: 123,
+				},
+				Spec: appsv1.StatefulSetSpec{
+					UpdateStrategy: appsv1.StatefulSetUpdateStrategy{
+						Type: appsv1.RollingUpdateStatefulSetStrategyType,
+					},
+					Replicas: ptr.To(int32(3)),
+				},
+				Status: appsv1.StatefulSetStatus{
+					ObservedGeneration: 123,
+					Replicas:           3,
+					ReadyReplicas:      1,
+				},
+			},
+			ready:       false,
+			msgContains: "Waiting for 2 pods",
+		},
+		{
+			name: "sts ready",
+			sts: &appsv1.StatefulSet{
+				ObjectMeta: metav1.ObjectMeta{
+					Generation: 123,
+				},
+				Spec: appsv1.StatefulSetSpec{
+					UpdateStrategy: appsv1.StatefulSetUpdateStrategy{
+						Type: appsv1.RollingUpdateStatefulSetStrategyType,
+					},
+					Replicas: ptr.To(int32(3)),
+				},
+				Status: appsv1.StatefulSetStatus{
+					ObservedGeneration: 123,
+					Replicas:           3,
+					ReadyReplicas:      3,
+				},
+			},
+			ready:       true,
+			msgContains: "rolling update complete",
+		},
+	}
+	for _, tt := range tests {
+		t.Run(tt.name, func(t *testing.T) {
+			msg, ready, err := isStatefulSetReady(tt.sts)
+			require.NoError(t, err) // should never err
+			assert.Equal(t, tt.ready, ready, msg)
+			if tt.msgContains != "" {
+				assert.Contains(t, msg, tt.msgContains)
+			}
+		})
+	}
+}
 
 // test apiserver does not return GVK inside the struct, what the hell
 type addGVKReconciler struct {
@@ -77,7 +141,7 @@ func TestReconciler_Reconcile(t *testing.T) {
 					ollamaClientProvider: ollamaclient.NewProvider(&http.Client{}, noop.NewTracerProvider().Tracer("tracer")),
 				}},
 		)
-		reconcile := func() error {
+		reconcileFn := func() error {
 			_, err := r.Reconcile(ctrl.LoggerInto(context.Background(), testr.NewWithOptions(t, testr.Options{Verbosity: 10})), reconcile.Request{
 				NamespacedName: types.NamespacedName{
 					Namespace: model.GetNamespace(),
@@ -87,7 +151,7 @@ func TestReconciler_Reconcile(t *testing.T) {
 			return err
 		}
 
-		err = reconcile()
+		err = reconcileFn()
 		require.NoError(t, err)
 
 		getModel := func() *ollamav1alpha1.Model {
@@ -122,7 +186,7 @@ func TestReconciler_Reconcile(t *testing.T) {
 			return cli.Status().Update(context.Background(), sts)
 		})
 		require.NoError(t, err)
-		err = reconcile()
+		err = reconcileFn()
 		require.NoError(t, err)
 
 		mdl = getModel()

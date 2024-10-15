@@ -27,12 +27,22 @@
   "osvVulnerabilityAlerts": true,
   "packageRules": [
     {
+      // bump all indirect otel deps
       "enabled": true,
       "matchManagers": ["gomod"],
       "matchDepTypes": ["indirect"],
       "matchPackagePrefixes": [
-        "k8s.io",
         "go.opentelemetry.io"
+      ]
+    },
+    {
+      // bump selected indirect k8s deps
+      "enabled": true,
+      "matchManagers": ["gomod"],
+      "matchDepTypes": ["indirect"],
+      "matchDepNames": [
+        "k8s.io/apiextensions-apiserver",
+        "k8s.io/cli-runtime"
       ]
     },
     {
