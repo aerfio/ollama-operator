@@ -4,7 +4,6 @@ import (
 	"context"
 	"testing"
 
-	"aerf.io/k8sutils"
 	"github.com/stretchr/testify/require"
 	corev1 "k8s.io/api/core/v1"
 	"k8s.io/apimachinery/pkg/api/resource"
@@ -15,6 +14,8 @@ import (
 	"k8s.io/utils/ptr"
 	"sigs.k8s.io/controller-runtime/pkg/client"
 	"sigs.k8s.io/controller-runtime/pkg/envtest"
+
+	"aerf.io/k8sutils"
 )
 
 func TestIsImmutable(t *testing.T) {

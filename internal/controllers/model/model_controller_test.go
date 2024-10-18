@@ -2,11 +2,15 @@ package model
 
 import (
 	"context"
+	"fmt"
 	"net/http"
 	"testing"
 
 	xpv1 "github.com/crossplane/crossplane-runtime/apis/common/v1"
+	"github.com/crossplane/crossplane-runtime/pkg/errors"
 	"github.com/go-logr/logr/testr"
+	"github.com/google/go-cmp/cmp"
+	"github.com/ollama/ollama/api"
 	"github.com/stretchr/testify/assert"
 	"github.com/stretchr/testify/require"
 	"go.opentelemetry.io/otel/trace/noop"
@@ -120,6 +124,7 @@ func TestReconciler_Reconcile(t *testing.T) {
 	_ = clientset.UseLegacyDiscovery
 
 	t.Run("Model controllers correctly sets the status conditions to signal that model is being pulled", func(t *testing.T) {
+
 		model := &ollamav1alpha1.Model{
 			ObjectMeta: metav1.ObjectMeta{
 				Name:      "test",
@@ -131,15 +136,62 @@ func TestReconciler_Reconcile(t *testing.T) {
 		}
 		require.NoError(t, cli.Create(context.Background(), model))
 
+		listCallNumber := 0
+		showCallNumber := 0
 		r := reconcile.AsReconciler[*ollamav1alpha1.Model](cli,
 			&addGVKReconciler{
 				inner: &Reconciler{
-					client:               client.WithFieldOwner(cli, "ollama-operator"),
-					recorder:             record.NewFakeRecorder(1000),
-					baseHTTPClient:       &http.Client{},
-					tp:                   noop.NewTracerProvider(),
-					ollamaClientProvider: ollamaclient.NewProvider(&http.Client{}, noop.NewTracerProvider().Tracer("tracer")),
-				}},
+					client:         client.WithFieldOwner(cli, "ollama-operator"),
+					recorder:       record.NewFakeRecorder(1000),
+					baseHTTPClient: &http.Client{},
+					tp:             noop.NewTracerProvider(),
+					ollamaClientProvider: &ollamaclient.TestOllamaClientProvider{
+						Client: &ollamaclient.TestOllamaClient{
+							OnList: func(ctx context.Context) (*api.ListResponse, error) {
+								defer func() {
+									listCallNumber += 1
+								}()
+								switch listCallNumber {
+								case 0:
+									// simulate random error
+									return nil, fmt.Errorf("boom")
+								case 1:
+									// returned first when the model is not yet pulled
+									return &api.ListResponse{}, nil
+								default:
+									return &api.ListResponse{
+										Models: []api.ListModelResponse{
+											{
+												Model: model.Spec.Model,
+											},
+										},
+									}, nil
+								}
+							},
+							OnShow: func(ctx context.Context, req *api.ShowRequest) (*api.ShowResponse, error) {
+								defer func() {
+									showCallNumber += 1
+								}()
+								switch showCallNumber {
+								case 0:
+									return nil, fmt.Errorf("show: boom")
+								default:
+									return &api.ShowResponse{
+										Details: api.ModelDetails{
+											ParentModel:       "pm",
+											Format:            "f",
+											Family:            "f",
+											Families:          []string{"fam"},
+											ParameterSize:     "ps",
+											QuantizationLevel: "ql",
+										},
+									}, nil
+								}
+							},
+						},
+					},
+				},
+			},
 		)
 		reconcileFn := func() error {
 			_, err := r.Reconcile(ctrl.LoggerInto(context.Background(), testr.NewWithOptions(t, testr.Options{Verbosity: 10})), reconcile.Request{
@@ -170,7 +222,6 @@ func TestReconciler_Reconcile(t *testing.T) {
 		readyCondition := mdl.GetCondition(xpv1.TypeReady)
 		require.Equalf(t, corev1.ConditionFalse, readyCondition.Status, "Ready condition has status False: %#v", readyCondition)
 
-		//sts := &appsv1.StatefulSet{}
 		err = retry.RetryOnConflict(retry.DefaultRetry, func() error {
 			sts := &appsv1.StatefulSet{}
 			err = cli.Get(context.Background(), client.ObjectKey{Name: model.GetName(), Namespace: model.GetNamespace()}, sts)
@@ -187,9 +238,39 @@ func TestReconciler_Reconcile(t *testing.T) {
 		})
 		require.NoError(t, err)
 		err = reconcileFn()
-		require.NoError(t, err)
+		require.Error(t, err, "error must be non-nil: there should be an error from failed list call")
 
 		mdl = getModel()
 		t.Logf("status: %#v", mdl.Status)
+		if diff := cmp.Diff(mdl.GetCondition(xpv1.TypeSynced), xpv1.ReconcileError(errors.New("failed to list local models: boom")), testutils.IgnoreXPv1ConditionFields()); diff != "" {
+			t.Fatalf("conditions differ, -got +want:\n%s", diff)
+		}
+
+		err = reconcileFn()
+		require.NoError(t, err)
+		mdl = getModel()
+		readyCondition = mdl.GetCondition(xpv1.TypeReady)
+		//readyCondition.LastTransitionTime = metav1.Time{}
+		//readyCondition.ObservedGeneration = 0
+		readyCondition.Message = "" // I have no idea why I have to override this msg if I'm ignoring this field, maybe cmpopts doesnt like ``
+		if diff := cmp.Diff(readyCondition, xpv1.Creating(), testutils.IgnoreXPv1ConditionFields("Message")); diff != "" {
+			t.Fatalf("conditions differ, -got +want:\n%s", diff)
+		}
+
+		err = reconcileFn()
+		require.Error(t, err)
+		mdl = getModel()
+		require.Contains(t, mdl.GetCondition(xpv1.TypeSynced).Message, "show: boom")
+		require.Equal(t, corev1.ConditionFalse, mdl.GetCondition(xpv1.TypeSynced).Status)
+
+		err = reconcileFn()
+		require.NoError(t, err)
+		mdl = getModel()
+		if diff := cmp.Diff(mdl.GetCondition(xpv1.TypeSynced), xpv1.ReconcileSuccess(), testutils.IgnoreXPv1ConditionFields()); diff != "" {
+			t.Fatalf("conditions differ, -got +want:\n%s", diff)
+		}
+		if diff := cmp.Diff(mdl.GetCondition(xpv1.TypeReady), xpv1.Available(), testutils.IgnoreXPv1ConditionFields()); diff != "" {
+			t.Fatalf("conditions differ, -got +want:\n%s", diff)
+		}
 	})
 }
