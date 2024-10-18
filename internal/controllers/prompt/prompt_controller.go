@@ -43,7 +43,7 @@ type Reconciler struct {
 	client               client.Client
 	recorder             record.EventRecorder
 	baseHTTPClient       *http.Client
-	ollamaClientProvider *ollamaclient.Provider
+	ollamaClientProvider ollamaclient.ClientProvider
 }
 
 func NewReconciler(cli client.Client, recorder record.EventRecorder, httpCli *http.Client, tp trace.TracerProvider) *Reconciler {

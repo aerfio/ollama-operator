@@ -14,7 +14,11 @@ import (
 	"aerf.io/ollama-operator/internal/defaults"
 )
 
-func NewProvider(baseHTTPClient *http.Client, tracer trace.Tracer) *Provider {
+type ClientProvider interface {
+	ForModel(model metav1.Object) Interface
+}
+
+func NewProvider(baseHTTPClient *http.Client, tracer trace.Tracer) ClientProvider {
 	return &Provider{
 		baseHTTPClient: baseHTTPClient,
 		tracer:         tracer,
