@@ -78,6 +78,10 @@ k8s-client-gen: applyconfiguration-gen
 		--output-pkg "$(GO_MODULE)/internal/client/applyconfiguration" \
 		$(API_DIRS)
 
+.PHONY: crossplane-gen
+crossplane-gen: angryjet
+	$(ANGRYJET) generate-methodsets ./apis/crossplane_ollama/...
+
 .PHONY: k8s-register-gen
 k8s-register-gen: register-gen
 	@echo ">> generating generated.register.go..."
@@ -119,6 +123,7 @@ ENVTEST ?= $(LOCALBIN)/setup-envtest
 GOLANGCI_LINT = $(LOCALBIN)/golangci-lint
 KO = $(LOCALBIN)/ko
 GOTESTSUM = $(LOCALBIN)/gotestsum
+ANGRYJET = $(LOCALBIN)/angryjet
 
 ## Tool Versions
 
@@ -133,6 +138,8 @@ KO_VERSION ?= v0.16.0
 GOTESTSUM_VERSION ?= v1.12.0
 # renovate: datasource=go depName=github.com/kubernetes/code-generator
 CODE_GENERATOR_VERSION ?= v0.31.1
+# renovate: datasource=go depName=github.com/crossplane/crossplane-tools
+ANGRYJET_VERSION ?= latest
 
 .PHONY: controller-gen
 controller-gen: $(CONTROLLER_GEN) ## Download controller-gen locally if necessary.
@@ -158,6 +165,11 @@ $(KO): $(LOCALBIN)
 gotestsum: $(GOTESTSUM)
 $(GOTESTSUM): $(LOCALBIN)
 	$(call go-install-tool,$(GOTESTSUM),gotest.tools/gotestsum,$(GOTESTSUM_VERSION))
+
+.PHONY: angryjet
+angryjet: $(ANGRYJET)
+$(ANGRYJET): $(LOCALBIN)
+	$(call go-install-tool,$(ANGRYJET),github.com/crossplane/crossplane-tools/cmd/angryjet,$(ANGRYJET_VERSION))
 
 .PHONY: applyconfiguration-gen
 applyconfiguration-gen: $(APPLYCONFIGURATION_GEN) ## Download applyconfiguration-gen locally if necessary.

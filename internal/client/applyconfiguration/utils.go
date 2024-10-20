@@ -3,7 +3,9 @@
 package applyconfiguration
 
 import (
+	crossplaneollamav1alpha1 "aerf.io/ollama-operator/apis/crossplane_ollama/v1alpha1"
 	v1alpha1 "aerf.io/ollama-operator/apis/ollama/v1alpha1"
+	applyconfigurationcrossplaneollamav1alpha1 "aerf.io/ollama-operator/internal/client/applyconfiguration/crossplane_ollama/v1alpha1"
 	internal "aerf.io/ollama-operator/internal/client/applyconfiguration/internal"
 	ollamav1alpha1 "aerf.io/ollama-operator/internal/client/applyconfiguration/ollama/v1alpha1"
 	runtime "k8s.io/apimachinery/pkg/runtime"
@@ -52,6 +54,14 @@ func ForKind(kind schema.GroupVersionKind) interface{} {
 		return &ollamav1alpha1.PromptSpecApplyConfiguration{}
 	case v1alpha1.SchemeGroupVersion.WithKind("PromptStatus"):
 		return &ollamav1alpha1.PromptStatusApplyConfiguration{}
+
+		// Group=ollama.crossplane.aerf.io, Version=v1alpha1
+	case crossplaneollamav1alpha1.SchemeGroupVersion.WithKind("ForProvider"):
+		return &applyconfigurationcrossplaneollamav1alpha1.ForProviderApplyConfiguration{}
+	case crossplaneollamav1alpha1.SchemeGroupVersion.WithKind("Model"):
+		return &applyconfigurationcrossplaneollamav1alpha1.ModelApplyConfiguration{}
+	case crossplaneollamav1alpha1.SchemeGroupVersion.WithKind("ModelSpec"):
+		return &applyconfigurationcrossplaneollamav1alpha1.ModelSpecApplyConfiguration{}
 
 	}
 	return nil
