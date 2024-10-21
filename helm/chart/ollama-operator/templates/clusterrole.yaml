@@ -26,6 +26,15 @@ rules:
       - update
       - create
   - apiGroups:
+      - ""
+    resources:
+      - events
+    verbs:
+      - get
+      - list
+      - watch
+      - create
+  - apiGroups:
       - apps
     resources:
       - statefulsets
