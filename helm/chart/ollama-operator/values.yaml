@@ -89,3 +89,7 @@ nodeSelector: {}
 tolerations: []
 
 affinity: {}
+
+operatorArgs:
+  - -leader-elect
+  - -v=0

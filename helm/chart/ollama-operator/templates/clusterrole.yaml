@@ -19,12 +19,7 @@ rules:
     resources:
       - services
     verbs:
-      - get
-      - list
-      - watch
-      - patch
-      - update
-      - create
+      - "*"
   - apiGroups:
       - ""
     resources:
@@ -34,22 +29,22 @@ rules:
       - list
       - watch
       - create
+      - update
+      - patch
+      - delete
   - apiGroups:
       - apps
     resources:
       - statefulsets
     verbs:
-      - get
-      - list
-      - watch
-      - patch
-      - update
-      - create
+      - "*"
   - apiGroups:
       - "ollama.aerf.io"
     resources:
       - prompts
+      - prompts/status
       - models
+      - models/status
     verbs:
       - get
       - list
@@ -57,13 +52,15 @@ rules:
       - patch
       - update
   - apiGroups:
-      - "ollama.aerf.io"
+      - ""
+      - coordination.k8s.io
     resources:
-      - prompts/status
-      - models/status
+      - leases
     verbs:
       - get
-      - watch
-      - patch
-      - update
+      - list
       - create
+      - update
+      - patch
+      - watch
+      - delete
