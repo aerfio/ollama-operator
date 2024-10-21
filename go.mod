@@ -11,10 +11,10 @@ require (
 	github.com/google/go-cmp v0.6.0
 	github.com/hashicorp/go-cleanhttp v0.5.2
 	github.com/klauspost/compress v1.17.11
-	github.com/ollama/ollama v0.3.13
+	github.com/ollama/ollama v0.3.14
 	github.com/spf13/pflag v1.0.5
 	github.com/stretchr/testify v1.9.0
-	go.opentelemetry.io/contrib/instrumentation/net/http/otelhttp v0.55.0
+	go.opentelemetry.io/contrib/instrumentation/net/http/otelhttp v0.56.0
 	go.opentelemetry.io/otel v1.31.0
 	go.opentelemetry.io/otel/metric v1.31.0
 	go.opentelemetry.io/otel/sdk v1.31.0
