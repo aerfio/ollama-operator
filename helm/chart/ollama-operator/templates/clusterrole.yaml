@@ -47,3 +47,14 @@ rules:
       - watch
       - patch
       - update
+  - apiGroups:
+      - "ollama.aerf.io"
+    resources:
+      - prompts/status
+      - models/status
+    verbs:
+      - get
+      - watch
+      - patch
+      - update
+      - create
