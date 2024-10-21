@@ -110,6 +110,8 @@ type PromptResponseMetrics struct {
 // +kubebuilder:printcolumn:name="SYNCED",type="string",JSONPath=".status.conditions[?(@.type=='Synced')].status"
 // +kubebuilder:printcolumn:name="READY",type="string",JSONPath=".status.conditions[?(@.type=='Ready')].status"
 // +kubebuilder:printcolumn:name="AGE",type="date",JSONPath=".metadata.creationTimestamp"
+// +kubebuilder:printcolumn:name="EVAL_RATE",type="date",JSONPath=".status.metrics.evalRate"
+// +kubebuilder:printcolumn:name="PROMPT_EVAL_RATE",type="date",JSONPath=".status.metrics.promptEvalRate"
 // +kubebuilder:resource:scope=Namespaced,categories={ollama}
 
 // Prompt is the Schema for the models API

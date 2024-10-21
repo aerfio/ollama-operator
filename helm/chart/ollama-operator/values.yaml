@@ -92,4 +92,4 @@ affinity: {}
 
 operatorArgs:
   - --leader-elect
-  - -v=0
+  - -v=1

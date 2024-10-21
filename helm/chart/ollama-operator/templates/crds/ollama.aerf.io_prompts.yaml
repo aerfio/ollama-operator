@@ -32,6 +32,15 @@ spec:
     - jsonPath: .metadata.creationTimestamp
       name: AGE
       type: date
+    - jsonPath: .metadata.creationTimestamp
+      name: AGE
+      type: date
+    - jsonPath: .status.metrics.evalRate
+      name: EVAL_RATE
+      type: date
+    - jsonPath: .status.metrics.promptEvalRate
+      name: PROMPT_EVAL_RATE
+      type: date
     name: v1alpha1
     schema:
       openAPIV3Schema:
