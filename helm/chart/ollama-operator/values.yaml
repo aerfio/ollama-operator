@@ -91,5 +91,5 @@ tolerations: []
 affinity: {}
 
 operatorArgs:
-  - -leader-elect
+  - --leader-elect
   - -v=0
