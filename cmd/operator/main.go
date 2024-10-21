@@ -244,6 +244,8 @@ func mainErr() (retErr error) {
 	cacheOpts := cache.Options{
 		ReaderFailOnMissingInformer: true, // let's try to ensure we understand what resources are cached by disabling auto-cache-creation and doing it manually here
 		ByObject: map[client.Object]cache.ByObject{
+			&ollamav1alpha1.Model{}:  {},
+			&ollamav1alpha1.Prompt{}: {},
 			/*
 				exposes ollama sts
 			*/

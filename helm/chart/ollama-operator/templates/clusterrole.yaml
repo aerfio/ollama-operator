@@ -1,0 +1,49 @@
+apiVersion: rbac.authorization.k8s.io/v1
+kind: ClusterRole
+metadata:
+  name: {{ include "ollama-operator.fullname" . }}
+  labels:
+    {{- include "ollama-operator.labels" . | nindent 4 }}
+rules:
+  - apiGroups:
+      - ""
+    resources:
+      - configmaps
+      - secrets
+    verbs:
+      - get
+      - list
+      - watch
+  - apiGroups:
+      - ""
+    resources:
+      - services
+    verbs:
+      - get
+      - list
+      - watch
+      - patch
+      - update
+      - create
+  - apiGroups:
+      - apps
+    resources:
+      - statefulsets
+    verbs:
+      - get
+      - list
+      - watch
+      - patch
+      - update
+      - create
+  - apiGroups:
+      - "ollama.aerf.io"
+    resources:
+      - prompts
+      - models
+    verbs:
+      - get
+      - list
+      - watch
+      - patch
+      - update
