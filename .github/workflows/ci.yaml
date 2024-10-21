@@ -87,3 +87,20 @@ jobs:
           version: v0.16.0
       - run: |
           ko build ./cmd/operator --sbom none --bare --tags "sha-$(git rev-parse --short=7 HEAD)"
+  build-helm-chart:
+    runs-on: ubuntu-24.04
+    permissions:
+      packages: write
+    steps:
+      - name: Checkout repository
+        uses: actions/checkout@eef61447b9ff4aafe5dcd4e0bbf5d482be7e7871 # v4
+      - name: Setup Helm binary
+        uses: azure/setup-helm@v4.2.0
+      - name: Login to ghcr with Helm
+        run: |
+          helm registry login ghcr.io -u ${{ github.repository_owner }} -p ${{ secrets.GITHUB_TOKEN }}
+      - name: Push helm chart
+        run: |
+          version="0.0.0-$(git describe --always --dirty --tags)"
+          helm package ./helm/chart/ollama-operator --app-version "sha-$(git rev-parse --short=7 HEAD)" --version "$version" -d out
+          helm push "./out/ollama-operator-${version}.tgz" oci://ghcr.io/${{ github.repository_owner }}/helm-charts

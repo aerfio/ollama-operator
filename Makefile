@@ -40,7 +40,7 @@ generate: manifests generate-deep-copy k8s-client-gen k8s-register-gen k8s-gvk-g
 
 .PHONY: manifests
 manifests: controller-gen ## Generate WebhookConfiguration, ClusterRole and CustomResourceDefinition objects.
-	$(CONTROLLER_GEN) crd paths="./..." output:crd:artifacts:config=crds
+	$(CONTROLLER_GEN) crd paths="./..." output:crd:artifacts:config=./helm/chart/ollama-operator/templates/crds
 
 .PHONY: generate-deep-copy
 generate-deep-copy: controller-gen ## Generate code containing DeepCopy, DeepCopyInto, and DeepCopyObject method implementations.
