@@ -98,9 +98,9 @@ jobs:
         uses: azure/setup-helm@v4.2.0
       - name: Login to ghcr with Helm
         run: |
-          helm registry login ghcr.io -u aerfio -p ${GITHUB_TOKEN}
+          helm registry login ghcr.io -u ${{ github.repository_owner }} -p ${{ secrets.GITHUB_TOKEN }}
       - name: Push helm chart
         run: |
           version="0.0.0-$(git describe --always --dirty --tags)"
           helm package ./helm/chart/ollama-operator --app-version "sha-$(git rev-parse --short=7 HEAD)" --version "$version" -d out
-          helm push "./out/ollama-operator-${version}.tgz" oci://ghcr.io/niklasmtj oci://ghcr.io/aerfio/ollama-operator/chart
+          helm push "./out/ollama-operator-${version}.tgz" oci://ghcr.io/${{ github.repository_owner }}/helm-charts
