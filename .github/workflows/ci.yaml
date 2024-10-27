@@ -11,6 +11,8 @@ name: CI
 env:
   # renovate: datasource=github-releases depName=golangci/golangci-lint
   GOLANGCI_LINT_VERSION: v1.61.0
+  # renovate: datasource=github-releases depName=github.com/kubernetes-sigs/kind
+  KIND_VERSION: v0.24.0
 
 jobs:
   test:
@@ -104,3 +106,28 @@ jobs:
           version="0.0.0-$(git describe --always --dirty --tags)"
           helm package ./helm/chart/ollama-operator --app-version "sha-$(git rev-parse --short=7 HEAD)" --version "$version" -d out
           helm push "./out/ollama-operator-${version}.tgz" oci://ghcr.io/${{ github.repository_owner }}/helm-charts
+  e2e:
+    needs:
+      - build-container-image
+    runs-on: ubuntu-24.04
+    steps:
+      - name: Checkout repository
+        uses: actions/checkout@eef61447b9ff4aafe5dcd4e0bbf5d482be7e7871 # v4.2.1
+      - name: Setup helm
+        uses: azure/setup-helm@v4.2.0
+      - name: Install chainsaw
+        uses: kyverno/action-install-chainsaw@v0.2.11
+      - name: Create k8s Kind Cluster
+        uses: helm/kind-action@v1
+        with:
+          version: ${{ env.KIND_VERSION }}
+          config: ./e2e/config/kind-config.yaml
+          # bump this manually when the kind version changes!
+          node_image: kindest/node:v1.31.0@sha256:53df588e04085fd41ae12de0c3fe4c72f7013bba32a20e7325357a1ac94ba865
+          wait: 3m
+      - name: Install ollama-operator in kind cluster
+        run: |
+          ./e2e/scripts/install.sh "sha-$(git rev-parse --short=7 HEAD)"
+      - name: Run e2e tests
+        run: |
+          chainsaw test --config ./e2e/config/.chainsaw.yaml --test-dir ./e2e/scenarios
