@@ -14,7 +14,7 @@ else
 endif
 
 .PHONY: all
-all: generate build test lint-fix
+all: generate build test lint-fix lint-chainsaw-tests
 
 ##@ General
 
@@ -59,6 +59,10 @@ test: manifests generate-deep-copy envtest gotestsum ## Run tests.
 .PHONY: lint
 lint: golangci-lint ## Run golangci-lint linter
 	$(GOLANGCI_LINT) run
+
+.PHONY: lint-chainsaw-tests
+lint-chainsaw-tests: chainsaw
+	@CHAINSAW=$(CHAINSAW) ./hack/lint-chainsaw.sh
 
 .PHONY: lint-fix
 lint-fix: golangci-lint ## Run golangci-lint linter and perform fixes
