@@ -13,5 +13,5 @@ func GetCRDsDir(t *testing.T) string {
 		t.Fatalf("failed to get caller filename")
 	}
 
-	return filepath.Join(filepath.Dir(filename), "..", "..", "crds")
+	return filepath.Join(filepath.Dir(filename), "..", "..", "helm", "chart", "ollama-operator", "templates", "crds")
 }
