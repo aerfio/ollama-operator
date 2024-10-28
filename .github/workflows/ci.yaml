@@ -114,11 +114,11 @@ jobs:
       - name: Checkout repository
         uses: actions/checkout@eef61447b9ff4aafe5dcd4e0bbf5d482be7e7871 # v4.2.1
       - name: Setup helm
-        uses: azure/setup-helm@v4.2.0
+        uses: azure/setup-helm@fe7b79cd5ee1e45176fcad797de68ecaf3ca4814 # v4.2.0
       - name: Install chainsaw
-        uses: kyverno/action-install-chainsaw@v0.2.11
+        uses: kyverno/action-install-chainsaw@d311eacde764f806c9658574ff64c9c3b21f8397 # v0.2.11
       - name: Create k8s Kind Cluster
-        uses: helm/kind-action@v1
+        uses: helm/kind-action@0025e74a8c7512023d06dc019c617aa3cf561fde # v1
         with:
           version: ${{ env.KIND_VERSION }}
           config: ./e2e/config/kind-config.yaml
@@ -136,7 +136,7 @@ jobs:
         run: |
           rm -rf ./logs
           kind export logs ./logs --name e2e-tests
-      - uses: actions/upload-artifact@v4
+      - uses: actions/upload-artifact@b4b15b8c7c6ac21ea08fcf65892d2ee8f75cf882 # v4
         with:
           name: logs
           path: ./logs
