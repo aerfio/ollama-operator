@@ -11,7 +11,7 @@ name: CI
 env:
   # renovate: datasource=github-releases depName=golangci/golangci-lint
   GOLANGCI_LINT_VERSION: v1.61.0
-  # renovate: datasource=github-releases depName=github.com/kubernetes-sigs/kind
+  # renovate: datasource=github-releases depName=kubernetes-sigs/kind
   KIND_VERSION: v0.24.0
 
 jobs:
