@@ -4,15 +4,13 @@ metadata:
   name: smollm-135m
 status:
   (conditions[?type == 'Ready']):
-    - status: "False"
+    - status: "True"
   (conditions[?type == 'Synced']):
-    - status: "False"
-      reason: ReconcileError
-      message: (contains(@,"terminalz error"))
+    - status: "True"
 ---
 apiVersion: v1
 kind: Event
-reason: IncorrectPatch
+reason: RecreatingDueToImmutableField
 source:
   component: model-controller
 involvedObject:

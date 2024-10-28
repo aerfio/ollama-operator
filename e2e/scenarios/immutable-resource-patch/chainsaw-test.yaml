@@ -5,15 +5,21 @@ metadata:
   name: patch-immutable-fields
 spec:
   steps:
-    - name: apply-model
+    - name: 00-apply-model
       try:
         - apply:
             file: 00-model.yaml
         - assert:
             file: 00-assert.yaml
-    - name: patch-statefulset
+    - name: 01-patch-statefulset-error
       try:
         - patch:
             file: 01-model-patch.yaml
         - assert:
-            file: 00-assert.yaml
+            file: 01-assert.yaml
+    - name: 02-patch-statefulset-error
+      try:
+        - patch:
+            file: 02-model-patch.yaml
+        - assert:
+            file: 02-assert.yaml
