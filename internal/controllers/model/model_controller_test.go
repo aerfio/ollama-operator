@@ -124,7 +124,6 @@ func TestReconciler_Reconcile(t *testing.T) {
 	_ = clientset.UseLegacyDiscovery
 
 	t.Run("Model controllers correctly sets the status conditions to signal that model is being pulled", func(t *testing.T) {
-
 		model := &ollamav1alpha1.Model{
 			ObjectMeta: metav1.ObjectMeta{
 				Name:      "test",
@@ -250,8 +249,6 @@ func TestReconciler_Reconcile(t *testing.T) {
 		require.NoError(t, err)
 		mdl = getModel()
 		readyCondition = mdl.GetCondition(xpv1.TypeReady)
-		//readyCondition.LastTransitionTime = metav1.Time{}
-		//readyCondition.ObservedGeneration = 0
 		readyCondition.Message = "" // I have no idea why I have to override this msg if I'm ignoring this field, maybe cmpopts doesnt like ``
 		if diff := cmp.Diff(readyCondition, xpv1.Creating(), testutils.IgnoreXPv1ConditionFields("Message")); diff != "" {
 			t.Fatalf("conditions differ, -got +want:\n%s", diff)

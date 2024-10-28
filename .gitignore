@@ -27,3 +27,4 @@ go.work
 *~
 vendor/
 /.envrc
+/chainsaw-report.json
