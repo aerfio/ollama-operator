@@ -1,0 +1,10 @@
+apiVersion: ollama.aerf.io/v1alpha1
+kind: Model
+metadata:
+  name: smollm-135m
+spec:
+  statefulSetPatches:
+    mergePatch:
+      spec:
+        # patch of this field should trigger immutable error
+        revisionHistoryLimit: 1

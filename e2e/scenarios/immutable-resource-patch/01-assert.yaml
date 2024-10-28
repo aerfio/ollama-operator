@@ -1,0 +1,21 @@
+apiVersion: ollama.aerf.io/v1alpha1
+kind: Model
+metadata:
+  name: smollm-135m
+status:
+  (conditions[?type == 'Ready']):
+    - status: "False"
+  (conditions[?type == 'Sync']):
+    - status: "False"
+      reason: ReconcileError
+      message: (contains("terminal error"))
+---
+apiVersion: v1
+kind: Event
+reason: IncorrectPatch
+source:
+  component: model-controller
+involvedObject:
+  apiVersion: v1
+  kind: Model
+  name: smollm-135m
