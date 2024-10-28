@@ -14,7 +14,7 @@ else
 endif
 
 .PHONY: all
-all: generate build test lint-fix
+all: generate build test lint-fix lint-chainsaw-tests
 
 ##@ General
 
@@ -40,7 +40,7 @@ generate: manifests generate-deep-copy k8s-client-gen k8s-register-gen k8s-gvk-g
 
 .PHONY: manifests
 manifests: controller-gen ## Generate WebhookConfiguration, ClusterRole and CustomResourceDefinition objects.
-	$(CONTROLLER_GEN) crd paths="./..." output:crd:artifacts:config=crds
+	$(CONTROLLER_GEN) crd paths="./..." output:crd:artifacts:config=./helm/chart/ollama-operator/templates/crds
 
 .PHONY: generate-deep-copy
 generate-deep-copy: controller-gen ## Generate code containing DeepCopy, DeepCopyInto, and DeepCopyObject method implementations.
@@ -59,6 +59,10 @@ test: manifests generate-deep-copy envtest gotestsum ## Run tests.
 .PHONY: lint
 lint: golangci-lint ## Run golangci-lint linter
 	$(GOLANGCI_LINT) run
+
+.PHONY: lint-chainsaw-tests
+lint-chainsaw-tests: chainsaw
+	@CHAINSAW=$(CHAINSAW) ./hack/lint-chainsaw.sh
 
 .PHONY: lint-fix
 lint-fix: golangci-lint ## Run golangci-lint linter and perform fixes
@@ -119,6 +123,7 @@ ENVTEST ?= $(LOCALBIN)/setup-envtest
 GOLANGCI_LINT = $(LOCALBIN)/golangci-lint
 KO = $(LOCALBIN)/ko
 GOTESTSUM = $(LOCALBIN)/gotestsum
+CHAINSAW = $(LOCALBIN)/chainsaw
 
 ## Tool Versions
 
@@ -128,11 +133,13 @@ ENVTEST_VERSION ?= release-0.19
 # renovate: datasource=github-releases depName=golangci/golangci-lint
 GOLANGCI_LINT_VERSION ?= v1.61.0
 # renovate: datasource=github-releases depName=ko-build/ko
-KO_VERSION ?= v0.16.0
+KO_VERSION ?= v0.17.1
 # renovate: datasource=github-releases depName=gotestyourself/gotestsum
 GOTESTSUM_VERSION ?= v1.12.0
 # renovate: datasource=go depName=github.com/kubernetes/code-generator
-CODE_GENERATOR_VERSION ?= v0.31.1
+CODE_GENERATOR_VERSION ?= v0.31.2
+# renovate: datasource=go depName=github.com/kyverno/chainsaw
+CHAINSAW_VERSION ?= v0.2.11
 
 .PHONY: controller-gen
 controller-gen: $(CONTROLLER_GEN) ## Download controller-gen locally if necessary.
@@ -153,6 +160,11 @@ $(GOLANGCI_LINT): $(LOCALBIN)
 ko: $(KO)
 $(KO): $(LOCALBIN)
 	$(call go-install-tool,$(KO),github.com/google/ko,$(KO_VERSION))
+
+.PHONY: chainsaw
+chainsaw: $(CHAINSAW)
+$(CHAINSAW): $(LOCALBIN)
+	$(call go-install-tool,$(CHAINSAW),github.com/kyverno/chainsaw,$(CHAINSAW_VERSION))
 
 .PHONY: gotestsum
 gotestsum: $(GOTESTSUM)
