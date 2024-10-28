@@ -135,7 +135,7 @@ jobs:
       - name: Export kind logs
         run: |
           rm -rf ./logs
-          kind export logs ./logs
+          kind export logs ./logs --name e2e-tests
       - uses: actions/upload-artifact@v4
         with:
           name: logs
