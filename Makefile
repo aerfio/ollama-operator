@@ -14,7 +14,7 @@ else
 endif
 
 .PHONY: all
-all: generate build test lint-fix
+all: generate build test lint-fix lint-chainsaw-tests
 
 ##@ General
 
@@ -59,6 +59,10 @@ test: manifests generate-deep-copy envtest gotestsum ## Run tests.
 .PHONY: lint
 lint: golangci-lint ## Run golangci-lint linter
 	$(GOLANGCI_LINT) run
+
+.PHONY: lint-chainsaw-tests
+lint-chainsaw-tests: chainsaw
+	@CHAINSAW=$(CHAINSAW) ./hack/lint-chainsaw.sh
 
 .PHONY: lint-fix
 lint-fix: golangci-lint ## Run golangci-lint linter and perform fixes
@@ -119,6 +123,7 @@ ENVTEST ?= $(LOCALBIN)/setup-envtest
 GOLANGCI_LINT = $(LOCALBIN)/golangci-lint
 KO = $(LOCALBIN)/ko
 GOTESTSUM = $(LOCALBIN)/gotestsum
+CHAINSAW = $(LOCALBIN)/chainsaw
 
 ## Tool Versions
 
@@ -133,6 +138,8 @@ KO_VERSION ?= v0.16.0
 GOTESTSUM_VERSION ?= v1.12.0
 # renovate: datasource=go depName=github.com/kubernetes/code-generator
 CODE_GENERATOR_VERSION ?= v0.31.1
+# renovate: datasource=go depName=github.com/kyverno/chainsaw
+CHAINSAW_VERSION ?= v0.2.11
 
 .PHONY: controller-gen
 controller-gen: $(CONTROLLER_GEN) ## Download controller-gen locally if necessary.
@@ -153,6 +160,11 @@ $(GOLANGCI_LINT): $(LOCALBIN)
 ko: $(KO)
 $(KO): $(LOCALBIN)
 	$(call go-install-tool,$(KO),github.com/google/ko,$(KO_VERSION))
+
+.PHONY: chainsaw
+chainsaw: $(CHAINSAW)
+$(CHAINSAW): $(LOCALBIN)
+	$(call go-install-tool,$(CHAINSAW),github.com/kyverno/chainsaw,$(CHAINSAW_VERSION))
 
 .PHONY: gotestsum
 gotestsum: $(GOTESTSUM)

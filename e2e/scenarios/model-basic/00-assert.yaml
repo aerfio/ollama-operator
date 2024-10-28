@@ -1,0 +1,18 @@
+apiVersion: apps/v1
+kind: StatefulSet
+metadata:
+  name: smollm-135m
+status:
+  availableReplicas: 1
+  currentReplicas: 1
+  readyReplicas: 1
+  replicas: 1
+  updatedReplicas: 1
+---
+apiVersion: ollama.aerf.io/v1alpha1
+kind: Model
+metadata:
+  name: smollm-135m
+status:
+  (conditions[?type == 'Ready']):
+    - status: "True"
