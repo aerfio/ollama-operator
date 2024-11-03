@@ -25,6 +25,7 @@ spec:
         - patch:
             file: 01-model-patch.yaml
         - assert:
+            timeout: 15s
             file: 01-assert.yaml
       catch: *catch
     - name: 02-patch-statefulset-error
