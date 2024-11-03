@@ -8,7 +8,7 @@ status:
   (conditions[?type == 'Synced']):
     - status: "False"
       reason: ReconcileError
-      message: (contains(@,"terminalz error"))
+      message: terminal error
 ---
 apiVersion: v1
 kind: Event
