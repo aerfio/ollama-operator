@@ -11,15 +11,26 @@ spec:
             file: 00-model.yaml
         - assert:
             file: 00-assert.yaml
+      catch: &catch
+        - podLogs:
+            namespace: ollama-operator
+            tail: 50
+        - events:
+            namespace: ($namespace)
+        - podLogs:
+            tail: 30
+            namespace: ($namespace)
     - name: 01-patch-statefulset-error
       try:
         - patch:
             file: 01-model-patch.yaml
         - assert:
             file: 01-assert.yaml
+      catch: *catch
     - name: 02-patch-statefulset-error
       try:
         - patch:
             file: 02-model-patch.yaml
         - assert:
             file: 02-assert.yaml
+      catch: *catch

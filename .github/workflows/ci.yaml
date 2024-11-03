@@ -13,6 +13,8 @@ env:
   GOLANGCI_LINT_VERSION: v1.61.0
   # renovate: datasource=github-releases depName=kubernetes-sigs/kind
   KIND_VERSION: v0.24.0
+  # bump this manually when the kind version changes!
+  KIND_NODE_IMAGE: kindest/node:v1.31.0@sha256:53df588e04085fd41ae12de0c3fe4c72f7013bba32a20e7325357a1ac94ba865
 
 jobs:
   test:
@@ -122,8 +124,7 @@ jobs:
         with:
           version: ${{ env.KIND_VERSION }}
           config: ./e2e/config/kind-config.yaml
-          # bump this manually when the kind version changes!
-          node_image: kindest/node:v1.31.0@sha256:53df588e04085fd41ae12de0c3fe4c72f7013bba32a20e7325357a1ac94ba865
+          node_image: ${{ env.KIND_NODE_IMAGE }}
           wait: 3m
           cluster_name: e2e-tests
       - name: Install ollama-operator in kind cluster
@@ -133,13 +134,24 @@ jobs:
         run: |
           chainsaw test --config ./e2e/config/.chainsaw.yaml --test-dir ./e2e/scenarios
       - name: Export kind logs
+        if: ${{ always() }}
         run: |
           rm -rf ./logs
           kind export logs ./logs --name e2e-tests
       - uses: actions/upload-artifact@b4b15b8c7c6ac21ea08fcf65892d2ee8f75cf882 # v4.4.3
+        if: ${{ always() }}
         with:
           name: logs
           path: ./logs
+      - run: |
+          {
+            echo "# E2E test summary:"
+            echo
+            echo "\`\`\`json"
+            echo "$(cat chainsaw-report.json)"
+            echo "\`\`\`"
+          } >> $GITHUB_STEP_SUMMARY
+
   lint-e2e-config:
     runs-on: ubuntu-24.04
     steps:
