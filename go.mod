@@ -5,7 +5,7 @@ go 1.23.2
 require (
 	aerf.io/k8sutils v0.0.0-20241020181625-1accee10ea2a
 	dario.cat/mergo v1.0.1
-	github.com/alecthomas/kong v1.2.1
+	github.com/alecthomas/kong v1.3.0
 	github.com/crossplane/crossplane-runtime v1.17.0
 	github.com/evanphx/json-patch/v5 v5.9.0
 	github.com/google/go-cmp v0.6.0
