@@ -46,15 +46,6 @@
       ]
     },
     {
-      // ignore selected deps - they should be bumped by bump of other dep
-      "enabled": false,
-      "matchManagers": ["gomod"],
-      "matchDepTypes": ["direct"],
-      "matchDepNames": [
-        "sigs.k8s.io/structured-merge-diff/v4", // bumped by k8s.io/apimachinery
-      ]
-    },
-    {
       "description": "Single PR for all kubernetes dependency updates, as they usually are all linked",
       "matchDatasources": [
         "go"
@@ -72,6 +63,15 @@
       ],
       "rangeStrategy": "bump",
       "groupName": "golang version"
+    },
+    {
+      // ignore selected deps - they should be bumped by bump of other dep
+      "enabled": false,
+      "matchManagers": ["gomod"],
+      "matchDepTypes": ["direct"],
+      "matchDepNames": [
+        "sigs.k8s.io/structured-merge-diff/v4", // bumped by k8s.io/apimachinery
+      ]
     }
   ],
   "customManagers": [
