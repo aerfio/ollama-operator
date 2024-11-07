@@ -17,6 +17,6 @@ reason: IncorrectPatch
 source:
   component: model-controller
 involvedObject:
-  apiVersion: v1
+  apiVersion: ollama.aerf.io/v1alpha1
   kind: Model
   name: smollm-135m
