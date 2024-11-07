@@ -28,11 +28,8 @@ import (
 	"strconv"
 	"time"
 
-	"github.com/felixge/fgprof"
-	"go.uber.org/atomic"
-	"k8s.io/apiserver/pkg/server/routes"
-
 	"github.com/crossplane/crossplane-runtime/pkg/errors"
+	"github.com/felixge/fgprof"
 	"github.com/hashicorp/go-cleanhttp"
 	"github.com/spf13/pflag"
 	"go.opentelemetry.io/contrib/instrumentation/net/http/otelhttp"
@@ -40,6 +37,7 @@ import (
 	metricnoop "go.opentelemetry.io/otel/metric/noop"
 	otelsdkresource "go.opentelemetry.io/otel/sdk/resource"
 	semconv "go.opentelemetry.io/otel/semconv/v1.26.0"
+	"go.uber.org/atomic"
 	"go.uber.org/multierr"
 	appsv1 "k8s.io/api/apps/v1"
 	corev1 "k8s.io/api/core/v1"
@@ -48,6 +46,7 @@ import (
 	"k8s.io/apimachinery/pkg/runtime"
 	utilruntime "k8s.io/apimachinery/pkg/util/runtime"
 	"k8s.io/apimachinery/pkg/util/validation/field"
+	"k8s.io/apiserver/pkg/server/routes"
 	clientgoscheme "k8s.io/client-go/kubernetes/scheme"
 	cliflag "k8s.io/component-base/cli/flag"
 	"k8s.io/component-base/logs"
