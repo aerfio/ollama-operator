@@ -1,11 +1,10 @@
 apiVersion: ollama.aerf.io/v1alpha1
 kind: Model
 metadata:
-  name: gemma2-2b
+  name: smollm-135m
 spec:
-  recreateOnImmutableError: true
-  model: gemma2:2b
   statefulSetPatches:
     mergePatch:
       spec:
-        revisionHistoryLimit: 2
+        # patch of this field should trigger immutable error
+        revisionHistoryLimit: 1
