@@ -4,3 +4,12 @@ metadata:
   name: smollm-135m
 spec:
   recreateOnImmutableError: true
+  statefulSetPatches:
+    mergePatch:
+      spec:
+        # patch of this field should trigger sts recreation
+        revisionHistoryLimit: 1
+        persistentVolumeClaimRetentionPolicy:
+          # let's delete that PVC now
+          whenDeleted: Delete
+          whenScaled: Delete

@@ -33,5 +33,6 @@ spec:
         - patch:
             file: 02-model-patch.yaml
         - assert:
+            timeout: 5m # sts will get recreated, might take a while to start over
             file: 02-assert.yaml
       catch: *catch

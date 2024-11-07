@@ -7,13 +7,3 @@ status:
     - status: "True"
   (conditions[?type == 'Synced']):
     - status: "True"
----
-apiVersion: v1
-kind: Event
-reason: RecreatingDueToImmutableField
-source:
-  component: model-controller
-involvedObject:
-  apiVersion: v1
-  kind: Model
-  name: smollm-135m
