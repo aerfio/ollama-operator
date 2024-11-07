@@ -35,7 +35,6 @@ import (
 	ollamav1alpha1 "aerf.io/ollama-operator/apis/ollama/v1alpha1"
 	"aerf.io/ollama-operator/internal/ollamaclient"
 
-	"aerf.io/k8sutils/k8stracing"
 	"aerf.io/k8sutils/utilreconcilers"
 )
 
@@ -46,30 +45,22 @@ type Reconciler struct {
 	ollamaClientProvider *ollamaclient.Provider
 }
 
-func NewReconciler(cli client.Client, recorder record.EventRecorder, httpCli *http.Client, tp trace.TracerProvider) *Reconciler {
-	return &Reconciler{
-		client:               client.WithFieldOwner(cli, "ollama-operator.prompt-controller"),
-		recorder:             recorder,
-		baseHTTPClient:       httpCli,
-		ollamaClientProvider: ollamaclient.NewProvider(httpCli, tp.Tracer("prompt-controller.ollama-client")),
-	}
-}
-
-// SetupWithManager sets up the controller with the Manager.
-func (r *Reconciler) SetupWithManager(mgr ctrl.Manager, tp trace.TracerProvider) error {
-	k8sCli := client.WithFieldOwner(
-		client.WithFieldValidation(
-			k8stracing.NewK8sClient(mgr.GetClient(), tp),
-			metav1.FieldValidationStrict),
-		"ollama-operator.prompt-controller")
+func SetupWithManager(mgr ctrl.Manager, baseHTTPClient *http.Client, tp trace.TracerProvider) error {
+	r := newReconciler(mgr.GetClient(), mgr.GetEventRecorderFor("ollama-operator.prompt-controller"), baseHTTPClient, tp)
+	reconciler := reconcile.AsReconciler(mgr.GetClient(), r)
+	reconciler = utilreconcilers.RequeueOnConflict(reconciler)
+	reconciler = utilreconcilers.NewWithTracingReconciler(
+		reconciler,
+		tp.Tracer("prompt-controller", trace.WithInstrumentationAttributes(attribute.Stringer("controller-gvk", ollamav1alpha1.PromptGroupVersionKind))),
+	)
 
 	return ctrl.NewControllerManagedBy(mgr).
 		For(&ollamav1alpha1.Prompt{}).
-		WatchesRawSource(source.Kind(mgr.GetCache(), &ollamav1alpha1.Model{}, handler.TypedEnqueueRequestsFromMapFunc[*ollamav1alpha1.Model](func(ctx context.Context, model *ollamav1alpha1.Model) []reconcile.Request {
-			log := mgr.GetLogger().WithValues("controller", "prompt-controller")
+		WatchesRawSource(source.Kind(mgr.GetCache(), &ollamav1alpha1.Model{}, handler.TypedEnqueueRequestsFromMapFunc(func(ctx context.Context, model *ollamav1alpha1.Model) []reconcile.Request {
+			log := mgr.GetLogger().WithValues("controller", "prompt-controller-watch-handler")
 
 			promptList := &ollamav1alpha1.PromptList{}
-			if err := k8sCli.List(ctx, promptList, client.InNamespace(model.GetNamespace())); err != nil {
+			if err := mgr.GetClient().List(ctx, promptList, client.InNamespace(model.GetNamespace())); err != nil {
 				log.Error(err, "unable to list prompts")
 				return nil
 			}
@@ -87,14 +78,16 @@ func (r *Reconciler) SetupWithManager(mgr ctrl.Manager, tp trace.TracerProvider)
 			}
 			return ctrlRequests
 		}))).
-		Complete(
-			utilreconcilers.NewWithTracingReconciler(
-				errors.WithSilentRequeueOnConflict(
-					reconcile.AsReconciler[*ollamav1alpha1.Prompt](k8sCli, r),
-				),
-				tp.Tracer("prompt-controller", trace.WithInstrumentationAttributes(attribute.Stringer("controller-gvk", ollamav1alpha1.PromptGroupVersionKind))),
-			),
-		)
+		Complete(reconciler)
+}
+
+func newReconciler(cli client.Client, recorder record.EventRecorder, httpCli *http.Client, tp trace.TracerProvider) *Reconciler {
+	return &Reconciler{
+		client:               cli,
+		recorder:             recorder,
+		baseHTTPClient:       httpCli,
+		ollamaClientProvider: ollamaclient.NewProvider(httpCli, tp.Tracer("prompt-controller.ollama-client")),
+	}
 }
 
 func (r *Reconciler) Reconcile(ctx context.Context, prompt *ollamav1alpha1.Prompt) (result ctrl.Result, retErr error) {
