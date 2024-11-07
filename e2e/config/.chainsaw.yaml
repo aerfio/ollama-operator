@@ -17,3 +17,10 @@ spec:
     delete: 4m0s
     error: 4m0s
     exec: 4m0s
+  error:
+    catch:
+      - podLogs:
+          namespace: ollama-operator
+          tail: 50
+      - events:
+          namespace: ($namespace)

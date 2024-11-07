@@ -11,15 +11,6 @@ spec:
             file: 00-model.yaml
         - assert:
             file: 00-assert.yaml
-      catch: &catch
-        - podLogs:
-            namespace: ollama-operator
-            tail: 50
-        - events:
-            namespace: ($namespace)
-        - podLogs:
-            tail: 30
-            namespace: ($namespace)
     - name: 01-patch-statefulset-error
       try:
         - patch:
@@ -27,7 +18,6 @@ spec:
         - assert:
             timeout: 15s
             file: 01-assert.yaml
-      catch: *catch
     - name: 02-patch-statefulset-error
       try:
         - patch:
@@ -35,4 +25,3 @@ spec:
         - assert:
             timeout: 5m # sts will get recreated, might take a while to start over
             file: 02-assert.yaml
-      catch: *catch
