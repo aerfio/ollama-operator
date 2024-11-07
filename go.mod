@@ -8,6 +8,7 @@ require (
 	github.com/alecthomas/kong v1.3.0
 	github.com/crossplane/crossplane-runtime v1.17.0
 	github.com/evanphx/json-patch/v5 v5.9.0
+	github.com/felixge/fgprof v0.9.5
 	github.com/google/go-cmp v0.6.0
 	github.com/hashicorp/go-cleanhttp v0.5.2
 	github.com/klauspost/compress v1.17.11
@@ -50,7 +51,6 @@ require (
 	github.com/emicklei/go-restful/v3 v3.12.1 // indirect
 	github.com/exponent-io/jsonpath v0.0.0-20151013193312-d6023ce2651d // indirect
 	github.com/fatih/camelcase v1.0.0 // indirect
-	github.com/felixge/fgprof v0.9.5 // indirect
 	github.com/felixge/httpsnoop v1.0.4 // indirect
 	github.com/fsnotify/fsnotify v1.7.0 // indirect
 	github.com/fxamacker/cbor/v2 v2.7.0 // indirect
