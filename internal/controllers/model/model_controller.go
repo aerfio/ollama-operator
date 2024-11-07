@@ -25,8 +25,6 @@ import (
 	"strings"
 	"time"
 
-	"aerf.io/k8sutils"
-	"aerf.io/k8sutils/utilreconcilers"
 	xpv1 "github.com/crossplane/crossplane-runtime/apis/common/v1"
 	"github.com/crossplane/crossplane-runtime/pkg/errors"
 	ollamaapi "github.com/ollama/ollama/api"
@@ -57,6 +55,9 @@ import (
 	"aerf.io/ollama-operator/internal/eventrecorder"
 	"aerf.io/ollama-operator/internal/ollamaclient"
 	"aerf.io/ollama-operator/internal/patches"
+
+	"aerf.io/k8sutils"
+	"aerf.io/k8sutils/utilreconcilers"
 )
 
 type Reconciler struct {

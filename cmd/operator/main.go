@@ -25,7 +25,6 @@ import (
 	"os"
 	"time"
 
-	"aerf.io/k8sutils/k8stracing"
 	"github.com/crossplane/crossplane-runtime/pkg/errors"
 	"github.com/hashicorp/go-cleanhttp"
 	"github.com/spf13/pflag"
@@ -63,6 +62,8 @@ import (
 	"aerf.io/ollama-operator/internal/controllers/model"
 	"aerf.io/ollama-operator/internal/controllers/prompt"
 	"aerf.io/ollama-operator/internal/restconfig"
+
+	"aerf.io/k8sutils/k8stracing"
 
 	_ "k8s.io/client-go/plugin/pkg/client/auth"
 	_ "k8s.io/component-base/logs/json/register"
