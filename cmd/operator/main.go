@@ -22,10 +22,14 @@ import (
 	"fmt"
 	"maps"
 	"net/http"
+	"net/http/pprof"
 	"os"
+	stdruntime "runtime"
+	"strconv"
 	"time"
 
 	"github.com/crossplane/crossplane-runtime/pkg/errors"
+	"github.com/felixge/fgprof"
 	"github.com/hashicorp/go-cleanhttp"
 	"github.com/spf13/pflag"
 	"go.opentelemetry.io/contrib/instrumentation/net/http/otelhttp"
@@ -33,6 +37,7 @@ import (
 	metricnoop "go.opentelemetry.io/otel/metric/noop"
 	otelsdkresource "go.opentelemetry.io/otel/sdk/resource"
 	semconv "go.opentelemetry.io/otel/semconv/v1.26.0"
+	"go.uber.org/atomic"
 	"go.uber.org/multierr"
 	appsv1 "k8s.io/api/apps/v1"
 	corev1 "k8s.io/api/core/v1"
@@ -41,6 +46,7 @@ import (
 	"k8s.io/apimachinery/pkg/runtime"
 	utilruntime "k8s.io/apimachinery/pkg/util/runtime"
 	"k8s.io/apimachinery/pkg/util/validation/field"
+	"k8s.io/apiserver/pkg/server/routes"
 	clientgoscheme "k8s.io/client-go/kubernetes/scheme"
 	cliflag "k8s.io/component-base/cli/flag"
 	"k8s.io/component-base/logs"
@@ -95,6 +101,10 @@ var (
 	groupKindConcurrency               = maps.Clone(dstGroupKindConcurrency)
 	tracingEndpoint                    = ""
 	tracingSampingRatePerMillion int32 = 0
+
+	blockProfileRate     = 0
+	cpuProfileRate       = 0
+	mutexProfileFraction = 0
 )
 
 func init() {
@@ -160,6 +170,15 @@ func initFlags(fs *pflag.FlagSet) {
 
 	fs.Int32Var(&tracingSampingRatePerMillion, "tracing-sampling-rate-per-million", tracingSampingRatePerMillion,
 		"The number of samples to collect per million spans. Ignored if --tracing-endpoint is not set")
+
+	fs.IntVar(&blockProfileRate, "block-profile-rate", blockProfileRate,
+		"Value to provide to runtime.SetBlockProfileRate. Not used if set to 0")
+
+	fs.IntVar(&cpuProfileRate, "cpu-profile-rate", cpuProfileRate,
+		"Value to provide to runtime.SetCPUProfileRate. Not used if set to 0")
+
+	fs.IntVar(&mutexProfileFraction, "mutex-profile-fraction", mutexProfileFraction,
+		"Value to provide to runtime.SetMutexProfileFraction. Not used if set to 0")
 }
 
 func main() {
@@ -278,12 +297,37 @@ func mainErr() (retErr error) {
 		}
 	}
 
+	logLvl := atomic.NewString(strconv.Itoa(log.GetV()))
 	mgr, err := ctrl.NewManager(restCfg, ctrl.Options{
 		Scheme:                 scheme,
 		HealthProbeBindAddress: fmt.Sprintf(":%d", probePort),
 		Metrics: metricsserver.Options{
 			SecureServing: false,
 			BindAddress:   fmt.Sprintf(":%d", diagnosticsPort),
+			ExtraHandlers: map[string]http.Handler{
+				// Add handler to dynamically change log level
+				"PUT /debug/flags/v": routes.StringFlagPutHandler(func(arg string) (string, error) {
+					msg, err := logs.GlogSetter(arg)
+					if err != nil {
+						return "", err
+					}
+					logLvl.Store(arg)
+					return msg, nil
+				}),
+				"GET /debug/flags/v": http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
+					w.Header().Set("Content-Type", "text/plain")
+					w.Header().Set("X-Content-Type-Options", "nosniff")
+					w.WriteHeader(http.StatusOK)
+					fmt.Fprintln(w, logLvl.Load())
+				}),
+				// Add pprof handler.
+				"GET /debug/pprof/":        http.HandlerFunc(pprof.Index),
+				"GET /debug/pprof/cmdline": http.HandlerFunc(pprof.Cmdline),
+				"GET /debug/pprof/profile": http.HandlerFunc(pprof.Profile),
+				"GET /debug/pprof/symbol":  http.HandlerFunc(pprof.Symbol),
+				"GET /debug/pprof/trace":   http.HandlerFunc(pprof.Trace),
+				"GET /debug/fgprof":        fgprof.Handler(),
+			},
 		},
 		LeaderElection:   enableLeaderElection,
 		LeaderElectionID: "ollama-operator.aerf.io",
@@ -348,6 +392,17 @@ func mainErr() (retErr error) {
 	}
 	if err := mgr.AddReadyzCheck("readyz", healthz.Ping); err != nil {
 		return fmt.Errorf("failed to add readyz checker: %s", err)
+	}
+
+	if blockProfileRate != 0 {
+		stdruntime.SetBlockProfileRate(blockProfileRate)
+	}
+	if cpuProfileRate != 0 {
+		stdruntime.SetCPUProfileRate(cpuProfileRate)
+	}
+	if mutexProfileFraction != 0 {
+		old := stdruntime.SetMutexProfileFraction(mutexProfileFraction)
+		log.Info("reported mutexProfileFraction", "value", old)
 	}
 
 	setupLog.Info("starting manager")

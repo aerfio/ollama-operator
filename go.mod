@@ -5,14 +5,15 @@ go 1.23.2
 require (
 	aerf.io/k8sutils v0.0.0-20241020181625-1accee10ea2a
 	dario.cat/mergo v1.0.1
-	github.com/alecthomas/kong v1.2.1
-	github.com/crossplane/crossplane-runtime v1.17.0
+	github.com/alecthomas/kong v1.4.0
+	github.com/crossplane/crossplane-runtime v1.18.0
 	github.com/evanphx/json-patch/v5 v5.9.0
+	github.com/felixge/fgprof v0.9.5
 	github.com/go-logr/logr v1.4.2
 	github.com/google/go-cmp v0.6.0
 	github.com/hashicorp/go-cleanhttp v0.5.2
 	github.com/klauspost/compress v1.17.11
-	github.com/ollama/ollama v0.3.14
+	github.com/ollama/ollama v0.4.0
 	github.com/spf13/pflag v1.0.5
 	github.com/stretchr/testify v1.9.0
 	go.opentelemetry.io/contrib/instrumentation/net/http/otelhttp v0.56.0
@@ -20,9 +21,11 @@ require (
 	go.opentelemetry.io/otel/metric v1.31.0
 	go.opentelemetry.io/otel/sdk v1.31.0
 	go.opentelemetry.io/otel/trace v1.31.0
+	go.uber.org/atomic v1.11.0
 	go.uber.org/multierr v1.11.0
 	k8s.io/api v0.31.2
 	k8s.io/apimachinery v0.31.2
+	k8s.io/apiserver v0.31.2
 	k8s.io/client-go v0.31.2
 	k8s.io/code-generator v0.31.2
 	k8s.io/component-base v0.31.2
@@ -39,6 +42,7 @@ require (
 require (
 	github.com/Azure/go-ansiterm v0.0.0-20210617225240-d185dfc1b5a1 // indirect
 	github.com/MakeNowJust/heredoc v1.0.0 // indirect
+	github.com/NYTimes/gziphandler v1.1.1 // indirect
 	github.com/beorn7/perks v1.0.1 // indirect
 	github.com/blang/semver/v4 v4.0.0 // indirect
 	github.com/cenkalti/backoff/v4 v4.3.0 // indirect
@@ -63,6 +67,7 @@ require (
 	github.com/google/btree v1.0.1 // indirect
 	github.com/google/gnostic-models v0.6.8 // indirect
 	github.com/google/gofuzz v1.2.0 // indirect
+	github.com/google/pprof v0.0.0-20241101162523-b92577c0c142 // indirect
 	github.com/google/shlex v0.0.0-20191202100458-e7afc7fbc510 // indirect
 	github.com/google/uuid v1.6.0 // indirect
 	github.com/gorilla/websocket v1.5.0 // indirect
