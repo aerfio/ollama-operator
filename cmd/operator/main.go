@@ -33,7 +33,6 @@ import (
 	metricnoop "go.opentelemetry.io/otel/metric/noop"
 	otelsdkresource "go.opentelemetry.io/otel/sdk/resource"
 	semconv "go.opentelemetry.io/otel/semconv/v1.26.0"
-	"go.uber.org/multierr"
 	appsv1 "k8s.io/api/apps/v1"
 	corev1 "k8s.io/api/core/v1"
 	metav1 "k8s.io/apimachinery/pkg/apis/meta/v1"
@@ -54,6 +53,7 @@ import (
 	"sigs.k8s.io/controller-runtime/pkg/client"
 	"sigs.k8s.io/controller-runtime/pkg/config"
 	"sigs.k8s.io/controller-runtime/pkg/healthz"
+	"sigs.k8s.io/controller-runtime/pkg/manager"
 	metricsserver "sigs.k8s.io/controller-runtime/pkg/metrics/server"
 
 	ollamav1alpha1 "aerf.io/ollama-operator/apis/ollama/v1alpha1"
@@ -169,7 +169,7 @@ func main() {
 	}
 }
 
-func mainErr() (retErr error) {
+func mainErr() error {
 	initFlags(pflag.CommandLine)
 	pflag.CommandLine.SetNormalizeFunc(cliflag.WordSepNormalizeFunc)
 	pflag.CommandLine.AddGoFlagSet(flag.CommandLine)
@@ -214,12 +214,6 @@ func mainErr() (retErr error) {
 	if err != nil {
 		return fmt.Errorf("failed to create tracing provider: %s", err)
 	}
-	defer func() {
-		shutdownCtx, cancel := context.WithTimeout(context.Background(), 10*time.Second)
-		defer cancel()
-
-		retErr = multierr.Append(retErr, tp.Shutdown(shutdownCtx))
-	}()
 	/*
 		if secureMetrics {
 			// FilterProvider is used to protect the metrics endpoint with authn/authz.
@@ -300,7 +294,7 @@ func mainErr() (retErr error) {
 		// the manager stops, so would be fine to enable this option. However,
 		// if you are doing or is intended to do any operation such as perform cleanups
 		// after the manager stops then its usage might be unsafe.
-		LeaderElectionReleaseOnCancel: false, // tracing provider shutdown makes us set it to false
+		LeaderElectionReleaseOnCancel: true, // tracing provider shutdown is in a runnable
 		Controller: config.Controller{
 			GroupKindConcurrency: groupKindConcurrency,
 		},
@@ -348,6 +342,17 @@ func mainErr() (retErr error) {
 	}
 	if err := mgr.AddReadyzCheck("readyz", healthz.Ping); err != nil {
 		return fmt.Errorf("failed to add readyz checker: %s", err)
+	}
+
+	if err := mgr.Add(manager.RunnableFunc(func(ctx context.Context) error {
+		<-ctx.Done()
+		log.Info("shutting down tracing provider")
+		shutdownCtx, cancel := context.WithTimeout(context.Background(), 10*time.Second)
+		defer cancel()
+
+		return tp.Shutdown(shutdownCtx)
+	})); err != nil {
+		return fmt.Errorf("failed to properly shutdown tracing provider: %s", err)
 	}
 
 	setupLog.Info("starting manager")

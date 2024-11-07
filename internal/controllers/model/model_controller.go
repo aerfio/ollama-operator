@@ -19,7 +19,9 @@ package model
 import (
 	"cmp"
 	"context"
+	"encoding/json"
 	"fmt"
+	"math"
 	"net/http"
 	"slices"
 	"strings"
@@ -27,6 +29,7 @@ import (
 
 	xpv1 "github.com/crossplane/crossplane-runtime/apis/common/v1"
 	"github.com/crossplane/crossplane-runtime/pkg/errors"
+	"github.com/go-logr/logr"
 	ollamaapi "github.com/ollama/ollama/api"
 	"go.opentelemetry.io/otel/attribute"
 	"go.opentelemetry.io/otel/trace"
@@ -37,6 +40,7 @@ import (
 	metav1 "k8s.io/apimachinery/pkg/apis/meta/v1"
 	"k8s.io/apimachinery/pkg/apis/meta/v1/unstructured"
 	"k8s.io/apimachinery/pkg/runtime"
+	"k8s.io/apimachinery/pkg/types"
 	"k8s.io/apimachinery/pkg/util/intstr"
 	applyappsv1 "k8s.io/client-go/applyconfigurations/apps/v1"
 	applycorev1 "k8s.io/client-go/applyconfigurations/core/v1"
@@ -51,6 +55,7 @@ import (
 
 	ollamav1alpha1 "aerf.io/ollama-operator/apis/ollama/v1alpha1"
 	"aerf.io/ollama-operator/internal/applyconfig"
+	applyollamav1alpha1 "aerf.io/ollama-operator/internal/client/applyconfiguration/ollama/v1alpha1"
 	"aerf.io/ollama-operator/internal/commonmeta"
 	"aerf.io/ollama-operator/internal/defaults"
 	"aerf.io/ollama-operator/internal/eventrecorder"
@@ -161,14 +166,28 @@ func (r *Reconciler) Reconcile(ctx context.Context, model *ollamav1alpha1.Model)
 
 		log.V(1).Info("started pulling ollama model")
 		recorder.NormalEventf("PullingModel", "Pulling %q model", model.Spec.Model)
+
 		pullResp := ollamaapi.ProgressResponse{}
+		progressCounter := 0
 		if err := ollamaCli.Pull(ctx, &ollamaapi.PullRequest{
 			Model:  model.Spec.Model,
 			Stream: ptr.To(true),
 		}, func(resp ollamaapi.ProgressResponse) error {
-			log.V(2).Info("pulling model...", "progressResponse", resp)
+			log.V(3).Info("pulling model...", "progressResponse", resp)
 			pullResp = resp
-			return nil
+
+			if resp.Total != 0 {
+				defer func() {
+					progressCounter += 1
+				}()
+
+				if progressCounter%10 == 0 {
+					log.Info("status patch", "completed", resp.Completed, "total", resp.Total)
+					return r.patchModelStatusOnPullingProgress(ctx, model, fmt.Sprintf("Progress in pulling model layer: %.2f%%, digest: %q", math.RoundToEven(float64(resp.Completed*100)/float64(resp.Total)), resp.Digest))
+				}
+			}
+
+			return ctx.Err() // return early on context cancel/timeout
 		}); err != nil {
 			recorder.WarningEventf("PullingModel", "failed to pull %q model", model.Spec.Model)
 			return ctrl.Result{}, errors.Wrapf(err, "failed to pull %q model", model.Spec.Model)
@@ -198,6 +217,36 @@ func (r *Reconciler) Reconcile(ctx context.Context, model *ollamav1alpha1.Model)
 	return ctrl.Result{}, nil
 }
 
+func (r *Reconciler) patchModelStatusOnPullingProgress(ctx context.Context, model *ollamav1alpha1.Model, msg string) error {
+	return r.client.Status().Patch(ctx, model, applyPatch{
+		obj: applyollamav1alpha1.Model(model.GetName(), model.GetNamespace()).
+			WithStatus(applyollamav1alpha1.ModelStatus().
+				WithObservedGeneration(model.GetGeneration()).
+				WithConditions(
+					xpv1.Creating().
+						WithObservedGeneration(model.GetGeneration()).
+						WithMessage(msg),
+					xpv1.ReconcileSuccess().
+						WithObservedGeneration(model.GetGeneration()),
+				),
+			),
+	}, client.ForceOwnership)
+}
+
+type applyPatch struct {
+	obj any
+}
+
+// Data implements client.Patch.
+func (a applyPatch) Data(obj client.Object) ([]byte, error) {
+	return json.Marshal(a.obj)
+}
+
+// Type implements client.Patch.
+func (a applyPatch) Type() types.PatchType {
+	return types.ApplyPatchType
+}
+
 func isStatefulSetReady(sts *appsv1.StatefulSet) (string, bool, error) {
 	unstr, err := k8sutils.ToUnstructured(sts)
 	if err != nil {
@@ -223,6 +272,13 @@ func (r *Reconciler) SetupWithManager(mgr ctrl.Manager, tp trace.TracerProvider)
 		For(&ollamav1alpha1.Model{}).
 		Owns(&appsv1.StatefulSet{}).
 		Owns(&corev1.Service{}).
+		WithLogConstructor(func(req *reconcile.Request) logr.Logger {
+			log := mgr.GetLogger().WithValues("controller", "model-controller")
+			if req == nil {
+				return log
+			}
+			return log.WithValues("name", req.Name, "namespace", req.Namespace)
+		}).
 		Complete(
 			utilreconcilers.NewWithTracingReconciler(
 				errors.WithSilentRequeueOnConflict(reconcile.AsReconciler[*ollamav1alpha1.Model](k8sCli, r)),
