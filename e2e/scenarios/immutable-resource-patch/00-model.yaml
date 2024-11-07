@@ -1,0 +1,14 @@
+apiVersion: ollama.aerf.io/v1alpha1
+kind: Model
+metadata:
+  name: smollm-135m
+spec:
+  model: smollm:135m
+  recreateOnImmutableError: false
+  statefulSetPatches:
+    mergePatch:
+      spec:
+        # subsequent test steps will be faster if this PVC is already there
+        persistentVolumeClaimRetentionPolicy:
+          whenDeleted: Retain
+          whenScaled: Retain

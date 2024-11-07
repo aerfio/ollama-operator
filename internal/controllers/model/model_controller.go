@@ -53,6 +53,7 @@ import (
 	"aerf.io/ollama-operator/internal/commonmeta"
 	"aerf.io/ollama-operator/internal/defaults"
 	"aerf.io/ollama-operator/internal/eventrecorder"
+	"aerf.io/ollama-operator/internal/k8serrors"
 	"aerf.io/ollama-operator/internal/ollamaclient"
 	"aerf.io/ollama-operator/internal/patches"
 
@@ -64,7 +65,8 @@ type Reconciler struct {
 	client               client.Client
 	recorder             record.EventRecorder
 	baseHTTPClient       *http.Client
-	ollamaClientProvider *ollamaclient.Provider
+	tp                   trace.TracerProvider
+	ollamaClientProvider ollamaclient.ClientProvider
 }
 
 func (r *Reconciler) apply(ctx context.Context, obj *unstructured.Unstructured, opts ...client.PatchOption) error {
@@ -81,13 +83,14 @@ func (r *Reconciler) Reconcile(ctx context.Context, model *ollamav1alpha1.Model)
 		model.Status.OllamaImage = cmp.Or(model.Spec.OllamaImage, defaults.OllamaImage)
 		if retErr != nil {
 			model.SetConditionsWithObservedGeneration(xpv1.ReconcileError(retErr))
+			model.SetConditionsWithObservedGeneration(xpv1.Unavailable()) // if the reconcile failed we can't say anything about the Model's status
 		} else {
 			model.SetConditionsWithObservedGeneration(xpv1.ReconcileSuccess())
 		}
 
 		patchErr := r.client.Status().Update(ctx, model)
 		if patchErr != nil {
-			retErr = errors.Join(retErr, patchErr)
+			retErr = errors.Join(retErr, fmt.Errorf("while patching status: %s", patchErr))
 		}
 	}()
 
@@ -99,13 +102,24 @@ func (r *Reconciler) Reconcile(ctx context.Context, model *ollamav1alpha1.Model)
 
 	resources, err := Resources(model)
 	if err != nil {
-		return ctrl.Result{}, err
+		return ctrl.Result{}, fmt.Errorf("while creating resources: %s", err)
 	}
 
 	for _, res := range resources {
 		log.V(1).Info("Applying object", "object", res)
 		if err := r.apply(ctx, res); err != nil {
-			return ctrl.Result{}, err
+			if !k8serrors.IsImmutable(err) {
+				return ctrl.Result{}, err
+			}
+
+			if !model.Spec.RecreateOnImmutableError {
+				recorder.WarningEventf("IncorrectPatch", "Model has an invalid patch to an immutable field. Either change the patch or set 'spec.recreateOnImmutableError=true': %s", err)
+				return ctrl.Result{}, reconcile.TerminalError(err) // do not retry reconcile in this case, it needs manual action from the user to fix the situation
+			}
+			log.V(1).Info("recreating object due to the spec.recreateOnImmutableError", "objectGVK", res.GroupVersionKind(), "objectName", res.GetName(), "objectNamespace", res.GetNamespace())
+			recorder.NormalEventf("RecreatingDueToImmutableField", "Recreating %s %s/%s due to spec.recreateOnImmutableError=true", res.GroupVersionKind().Kind, res.GetName(), res.GetNamespace())
+			err = r.client.Delete(ctx, res)
+			return ctrl.Result{}, client.IgnoreNotFound(err)
 		}
 	}
 
@@ -116,7 +130,7 @@ func (r *Reconciler) Reconcile(ctx context.Context, model *ollamav1alpha1.Model)
 	}, sts); err != nil {
 		if apierrors.IsNotFound(err) {
 			model.SetConditionsWithObservedGeneration(xpv1.Creating())
-			return ctrl.Result{RequeueAfter: 3 * time.Second}, nil
+			return ctrl.Result{}, nil
 		}
 		return ctrl.Result{}, errors.Wrap(err, "failed to fetch statefulset to check its readiness")
 	}
@@ -153,7 +167,7 @@ func (r *Reconciler) Reconcile(ctx context.Context, model *ollamav1alpha1.Model)
 			Model:  model.Spec.Model,
 			Stream: ptr.To(true),
 		}, func(resp ollamaapi.ProgressResponse) error {
-			log.V(2).Info("pulling model...", "progressResponse", resp)
+			log.V(4).Info("pulling model...", "progressResponse", resp)
 			pullResp = resp
 			return nil
 		}); err != nil {

@@ -42,7 +42,16 @@ type Reconciler struct {
 	client               client.Client
 	recorder             record.EventRecorder
 	baseHTTPClient       *http.Client
-	ollamaClientProvider *ollamaclient.Provider
+	ollamaClientProvider ollamaclient.ClientProvider
+}
+
+func newReconciler(cli client.Client, recorder record.EventRecorder, httpCli *http.Client, tp trace.TracerProvider) *Reconciler {
+	return &Reconciler{
+		client:               cli,
+		recorder:             recorder,
+		baseHTTPClient:       httpCli,
+		ollamaClientProvider: ollamaclient.NewProvider(httpCli, tp.Tracer("prompt-controller.ollama-client")),
+	}
 }
 
 func SetupWithManager(mgr ctrl.Manager, baseHTTPClient *http.Client, tp trace.TracerProvider) error {
@@ -79,15 +88,6 @@ func SetupWithManager(mgr ctrl.Manager, baseHTTPClient *http.Client, tp trace.Tr
 			return ctrlRequests
 		}))).
 		Complete(reconciler)
-}
-
-func newReconciler(cli client.Client, recorder record.EventRecorder, httpCli *http.Client, tp trace.TracerProvider) *Reconciler {
-	return &Reconciler{
-		client:               cli,
-		recorder:             recorder,
-		baseHTTPClient:       httpCli,
-		ollamaClientProvider: ollamaclient.NewProvider(httpCli, tp.Tracer("prompt-controller.ollama-client")),
-	}
 }
 
 func (r *Reconciler) Reconcile(ctx context.Context, prompt *ollamav1alpha1.Prompt) (result ctrl.Result, retErr error) {
@@ -247,14 +247,14 @@ func convertImageData(data ollamav1alpha1.ImageData) (ollamaapi.ImageData, error
 		content, err := io.ReadAll(gzipReader)
 		return content, errors.Wrap(multierr.Append(err, gzipReader.Close()), "while decompressing image encoded in gzip format")
 	case ollamav1alpha1.ImageFormatZstd:
-		content, err := DecodeBase64Zstd([]byte(data.Data))
+		content, err := decodeBase64Zstd([]byte(data.Data))
 		return content, errors.Wrap(err, "while decompressing image encoded in zstd")
 	default:
 		panic(fmt.Sprintf("Unknown image format %q, available formats: %+v. This panic should never happen, please file an issue in source repository", data.Format, ollamav1alpha1.ImageFormatAll))
 	}
 }
 
-func DecodeBase64Zstd(input []byte) ([]byte, error) {
+func decodeBase64Zstd(input []byte) ([]byte, error) {
 	b64Dec := base64.NewDecoder(base64.StdEncoding, bytes.NewReader(input))
 	zstdReader, err := zstd.NewReader(b64Dec)
 	if err != nil {
