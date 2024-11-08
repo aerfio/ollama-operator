@@ -218,6 +218,7 @@ func newReconciler(cli client.Client, recorder record.EventRecorder, baseHTTPCli
 		recorder:             recorder,
 		baseHTTPClient:       baseHTTPClient,
 		ollamaClientProvider: ollamaclient.NewProvider(baseHTTPClient, tp.Tracer("ollama-client")),
+		tp:                   tp,
 	}
 }
 
