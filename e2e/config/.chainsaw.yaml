@@ -21,6 +21,7 @@ spec:
     catch:
       - podLogs:
           namespace: ollama-operator
+          name: ollama-operator
           tail: 50
       - events:
           namespace: ($namespace)
