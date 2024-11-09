@@ -48,6 +48,7 @@ import (
 	"k8s.io/apimachinery/pkg/util/validation/field"
 	"k8s.io/apiserver/pkg/server/routes"
 	clientgoscheme "k8s.io/client-go/kubernetes/scheme"
+	"k8s.io/client-go/rest"
 	cliflag "k8s.io/component-base/cli/flag"
 	"k8s.io/component-base/logs"
 	logsapi "k8s.io/component-base/logs/api/v1"
@@ -67,6 +68,8 @@ import (
 	"aerf.io/ollama-operator/internal/controllers/model"
 	"aerf.io/ollama-operator/internal/controllers/prompt"
 	"aerf.io/ollama-operator/internal/restconfig"
+
+	"aerf.io/k8sutils/k8stracing"
 
 	_ "k8s.io/client-go/plugin/pkg/client/auth"
 	_ "k8s.io/component-base/logs/json/register"
@@ -334,6 +337,16 @@ func mainErr() (retErr error) {
 		LeaseDuration:    &leaderElectionLeaseDuration,
 		RenewDeadline:    &leaderElectionRenewDeadline,
 		RetryPeriod:      &leaderElectionRetryPeriod,
+		NewClient: func(cfg *rest.Config, opts client.Options) (client.Client, error) {
+			cli, err := client.New(cfg, opts)
+			if err != nil {
+				return nil, err
+			}
+			cli = client.WithFieldValidation(cli, metav1.FieldValidationStrict)
+			cli = client.WithFieldOwner(cli, "ollama-operator")
+			cli = k8stracing.NewK8sClient(cli, tp)
+			return cli, nil
+		},
 		// LeaderElectionReleaseOnCancel defines if the leader should step down voluntarily
 		// when the Manager ends. This requires the binary to immediately end when the
 		// Manager is stopped, otherwise, this setting is unsafe. Setting this significantly
@@ -370,21 +383,12 @@ func mainErr() (retErr error) {
 		),
 	}
 
-	if err = model.NewReconciler(
-		mgr.GetClient(),
-		mgr.GetEventRecorderFor("model-controller"),
-		httpCli,
-		tp,
-	).SetupWithManager(mgr, tp); err != nil {
-		return fmt.Errorf("failed to create Model controller: %s", err)
+	if err := model.SetupWithManager(mgr, httpCli, tp); err != nil {
+		return fmt.Errorf("failed to setup Model controller: %s", err)
 	}
-	if err = prompt.NewReconciler(
-		mgr.GetClient(),
-		mgr.GetEventRecorderFor("prompt-controller"),
-		httpCli,
-		tp,
-	).SetupWithManager(mgr, tp); err != nil {
-		return fmt.Errorf("failed to create Prompt controller: %s", err)
+
+	if err := prompt.SetupWithManager(mgr, httpCli, tp); err != nil {
+		return fmt.Errorf("failed to setup Prompt controller: %s", err)
 	}
 
 	if err := mgr.AddHealthzCheck("healthz", healthz.Ping); err != nil {

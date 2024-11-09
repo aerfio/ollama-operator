@@ -34,7 +34,6 @@ import (
 	corev1 "k8s.io/api/core/v1"
 	apierrors "k8s.io/apimachinery/pkg/api/errors"
 	apimachineryresource "k8s.io/apimachinery/pkg/api/resource"
-	metav1 "k8s.io/apimachinery/pkg/apis/meta/v1"
 	"k8s.io/apimachinery/pkg/apis/meta/v1/unstructured"
 	"k8s.io/apimachinery/pkg/runtime"
 	"k8s.io/apimachinery/pkg/util/intstr"
@@ -46,9 +45,7 @@ import (
 	"k8s.io/kubectl/pkg/polymorphichelpers"
 	"k8s.io/utils/ptr"
 	ctrl "sigs.k8s.io/controller-runtime"
-	"sigs.k8s.io/controller-runtime/pkg/builder"
 	"sigs.k8s.io/controller-runtime/pkg/client"
-	"sigs.k8s.io/controller-runtime/pkg/predicate"
 	"sigs.k8s.io/controller-runtime/pkg/reconcile"
 
 	ollamav1alpha1 "aerf.io/ollama-operator/apis/ollama/v1alpha1"
@@ -61,7 +58,6 @@ import (
 	"aerf.io/ollama-operator/internal/patches"
 
 	"aerf.io/k8sutils"
-	"aerf.io/k8sutils/k8stracing"
 	"aerf.io/k8sutils/utilreconcilers"
 )
 
@@ -71,16 +67,6 @@ type Reconciler struct {
 	baseHTTPClient       *http.Client
 	tp                   trace.TracerProvider
 	ollamaClientProvider ollamaclient.ClientProvider
-}
-
-func NewReconciler(cli client.Client, recorder record.EventRecorder, baseHTTPClient *http.Client, tp trace.TracerProvider) *Reconciler {
-	return &Reconciler{
-		client:               client.WithFieldOwner(cli, "ollama-operator.model-controller"),
-		recorder:             recorder,
-		baseHTTPClient:       baseHTTPClient,
-		tp:                   tp,
-		ollamaClientProvider: ollamaclient.NewProvider(baseHTTPClient, tp.Tracer("ollama-client")),
-	}
 }
 
 func (r *Reconciler) apply(ctx context.Context, obj *unstructured.Unstructured, opts ...client.PatchOption) error {
@@ -226,24 +212,30 @@ func isStatefulSetReady(sts *appsv1.StatefulSet) (string, bool, error) {
 	return strings.TrimSuffix(msg, "...\n"), ready, nil
 }
 
-// SetupWithManager sets up the controller with the Manager.
-func (r *Reconciler) SetupWithManager(mgr ctrl.Manager, tp trace.TracerProvider) error {
-	k8sCli := client.WithFieldOwner(
-		client.WithFieldValidation(
-			k8stracing.NewK8sClient(mgr.GetClient(), tp),
-			metav1.FieldValidationStrict),
-		"ollama-operator.prompt-controller")
+func newReconciler(cli client.Client, recorder record.EventRecorder, baseHTTPClient *http.Client, tp trace.TracerProvider) *Reconciler {
+	return &Reconciler{
+		client:               cli,
+		recorder:             recorder,
+		baseHTTPClient:       baseHTTPClient,
+		ollamaClientProvider: ollamaclient.NewProvider(baseHTTPClient, tp.Tracer("ollama-client")),
+		tp:                   tp,
+	}
+}
+
+func SetupWithManager(mgr ctrl.Manager, baseHTTPClient *http.Client, tp trace.TracerProvider) error {
+	r := newReconciler(mgr.GetClient(), mgr.GetEventRecorderFor("ollama-operator.model-controller"), baseHTTPClient, tp)
+	reconciler := reconcile.AsReconciler(mgr.GetClient(), r)
+	reconciler = utilreconcilers.NewWithTracingReconciler(
+		reconciler,
+		tp.Tracer("model-controller", trace.WithInstrumentationAttributes(attribute.Stringer("controller-gvk", ollamav1alpha1.ModelGroupVersionKind))),
+	)
+	reconciler = utilreconcilers.RequeueOnConflict(reconciler)
 
 	return ctrl.NewControllerManagedBy(mgr).
 		For(&ollamav1alpha1.Model{}).
 		Owns(&appsv1.StatefulSet{}).
-		Owns(&corev1.Service{}, builder.WithPredicates(predicate.GenerationChangedPredicate{})).
-		Complete(
-			utilreconcilers.NewWithTracingReconciler(
-				errors.WithSilentRequeueOnConflict(reconcile.AsReconciler[*ollamav1alpha1.Model](k8sCli, r)),
-				tp.Tracer("model-controller", trace.WithInstrumentationAttributes(attribute.Stringer("controller-gvk", ollamav1alpha1.ModelGroupVersionKind))),
-			),
-		)
+		Owns(&corev1.Service{}).
+		Complete(reconciler)
 }
 
 func Resources(model *ollamav1alpha1.Model) ([]*unstructured.Unstructured, error) {
