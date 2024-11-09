@@ -127,7 +127,9 @@ jobs:
           cluster_name: e2e-tests
       - name: Install ollama-operator in kind cluster
         run: |
-          ./e2e/scripts/install.sh "sha-$(git rev-parse --short=7 HEAD)"
+          imageSHA="sha-$(git rev-parse --short=7 HEAD)"
+          echo "installing ollama-operator with container image tag: $imageSHA"
+          ./e2e/scripts/install.sh "$imageSHA"
       - name: Run e2e tests
         run: |
           chainsaw test --config ./e2e/config/.chainsaw.yaml --test-dir ./e2e/scenarios

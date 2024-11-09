@@ -21,7 +21,10 @@ spec:
     catch:
       - podLogs:
           namespace: ollama-operator
-          name: ollama-operator
-          tail: 50
+          selector: app.kubernetes.io/name=ollama-operator
+          tail: 30
       - events:
           namespace: ($namespace)
+      - podLogs:
+          namespace: ($namespace)
+          tail: 30
