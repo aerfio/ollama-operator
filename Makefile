@@ -112,7 +112,7 @@ container-build: $(KO) ## Build docker image with the manager.
 ##@ Dependencies
 
 ## Location to install dependencies to
-LOCALBIN ?= $(shell pwd)/bin
+LOCALBIN ?= $(CURRENT_DIR)/bin
 $(LOCALBIN):
 	mkdir -p $(LOCALBIN)
 
