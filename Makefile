@@ -132,7 +132,7 @@ CHAINSAW = $(LOCALBIN)/chainsaw
 CONTROLLER_TOOLS_VERSION ?= v0.16.5
 ENVTEST_VERSION ?= release-0.19
 # renovate: datasource=github-releases depName=golangci/golangci-lint
-GOLANGCI_LINT_VERSION ?= v1.62.0
+GOLANGCI_LINT_VERSION ?= v1.62.2
 # renovate: datasource=github-releases depName=ko-build/ko
 KO_VERSION ?= v0.17.1
 # renovate: datasource=github-releases depName=gotestyourself/gotestsum
