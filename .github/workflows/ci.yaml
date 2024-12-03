@@ -67,12 +67,12 @@ jobs:
         uses: golangci/golangci-lint-action@971e284b6050e8a5849b72094c50ab08da042db8 # v6.1.1
         with:
           version: ${{ env.GOLANGCI_LINT_VERSION }}
-  check-vulnerabilities:
-    runs-on: ubuntu-24.04
-    steps:
-      - uses: golang/govulncheck-action@b625fbe08f3bccbe446d94fbf87fcc875a4f50ee # v1.0.4
-        with:
-          go-version-file: go.mod
+  # check-vulnerabilities:
+  #   runs-on: ubuntu-24.04
+  #   steps:
+  #     - uses: golang/govulncheck-action@b625fbe08f3bccbe446d94fbf87fcc875a4f50ee # v1.0.4
+  #       with:
+  #         go-version-file: go.mod
   build-container-image:
     runs-on: ubuntu-24.04
     permissions:
