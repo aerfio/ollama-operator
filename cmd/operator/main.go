@@ -17,7 +17,6 @@ limitations under the License.
 package main
 
 import (
-	"context"
 	"flag"
 	"fmt"
 	"maps"
@@ -38,7 +37,6 @@ import (
 	otelsdkresource "go.opentelemetry.io/otel/sdk/resource"
 	semconv "go.opentelemetry.io/otel/semconv/v1.26.0"
 	"go.uber.org/atomic"
-	"go.uber.org/multierr"
 	appsv1 "k8s.io/api/apps/v1"
 	corev1 "k8s.io/api/core/v1"
 	metav1 "k8s.io/apimachinery/pkg/apis/meta/v1"
@@ -191,7 +189,7 @@ func main() {
 	}
 }
 
-func mainErr() (retErr error) {
+func mainErr() error {
 	initFlags(pflag.CommandLine)
 	pflag.CommandLine.SetNormalizeFunc(cliflag.WordSepNormalizeFunc)
 	pflag.CommandLine.AddGoFlagSet(flag.CommandLine)
@@ -236,12 +234,6 @@ func mainErr() (retErr error) {
 	if err != nil {
 		return fmt.Errorf("failed to create tracing provider: %s", err)
 	}
-	defer func() {
-		shutdownCtx, cancel := context.WithTimeout(context.Background(), 10*time.Second)
-		defer cancel()
-
-		retErr = multierr.Append(retErr, tp.Shutdown(shutdownCtx))
-	}()
 	/*
 		if secureMetrics {
 			// FilterProvider is used to protect the metrics endpoint with authn/authz.
@@ -357,7 +349,7 @@ func mainErr() (retErr error) {
 		// the manager stops, so would be fine to enable this option. However,
 		// if you are doing or is intended to do any operation such as perform cleanups
 		// after the manager stops then its usage might be unsafe.
-		LeaderElectionReleaseOnCancel: false, // tracing provider shutdown makes us set it to false
+		LeaderElectionReleaseOnCancel: true, // tracing provider shutdown is in a runnable
 		Controller: config.Controller{
 			GroupKindConcurrency: groupKindConcurrency,
 		},

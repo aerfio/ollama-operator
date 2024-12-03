@@ -1,0 +1,7 @@
+# https://ollama.com/library/granite3-moe:1b
+apiVersion: ollama.aerf.io/v1alpha1
+kind: Model
+metadata:
+  name: granite3-moe-1b
+spec:
+  model: granite3-moe:1b
