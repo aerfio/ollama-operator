@@ -182,7 +182,7 @@ func (r *Reconciler) Reconcile(ctx context.Context, model *ollamav1alpha1.Model)
 				}()
 
 				if progressCounter%10 == 0 {
-					log.Info("status patch", "completed", resp.Completed, "total", resp.Total)
+					log.Info("pulling")
 					return r.patchModelStatusOnPullingProgress(ctx, model, fmt.Sprintf("Progress in pulling model layer: %.2f%%, digest: %q", math.RoundToEven(float64(resp.Completed*100)/float64(resp.Total)), resp.Digest))
 				}
 			}
