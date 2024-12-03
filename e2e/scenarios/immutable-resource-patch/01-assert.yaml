@@ -1,0 +1,12 @@
+apiVersion: ollama.aerf.io/v1alpha1
+kind: Model
+metadata:
+  name: smollm-135m
+status:
+  (conditions[?type == 'Ready']):
+    - status: "False"
+  (conditions[?type == 'Synced']):
+    - status: "False"
+      reason: ReconcileError
+      message: |-
+        terminal error: StatefulSet.apps "smollm-135m" is invalid: spec: Forbidden: updates to statefulset spec for fields other than 'replicas', 'ordinals', 'template', 'updateStrategy', 'persistentVolumeClaimRetentionPolicy' and 'minReadySeconds' are forbidden

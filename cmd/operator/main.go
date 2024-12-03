@@ -17,15 +17,18 @@ limitations under the License.
 package main
 
 import (
-	"context"
 	"flag"
 	"fmt"
 	"maps"
 	"net/http"
+	"net/http/pprof"
 	"os"
+	stdruntime "runtime"
+	"strconv"
 	"time"
 
 	"github.com/crossplane/crossplane-runtime/pkg/errors"
+	"github.com/felixge/fgprof"
 	"github.com/hashicorp/go-cleanhttp"
 	"github.com/spf13/pflag"
 	"go.opentelemetry.io/contrib/instrumentation/net/http/otelhttp"
@@ -33,6 +36,7 @@ import (
 	metricnoop "go.opentelemetry.io/otel/metric/noop"
 	otelsdkresource "go.opentelemetry.io/otel/sdk/resource"
 	semconv "go.opentelemetry.io/otel/semconv/v1.26.0"
+	"go.uber.org/atomic"
 	appsv1 "k8s.io/api/apps/v1"
 	corev1 "k8s.io/api/core/v1"
 	metav1 "k8s.io/apimachinery/pkg/apis/meta/v1"
@@ -40,7 +44,9 @@ import (
 	"k8s.io/apimachinery/pkg/runtime"
 	utilruntime "k8s.io/apimachinery/pkg/util/runtime"
 	"k8s.io/apimachinery/pkg/util/validation/field"
+	"k8s.io/apiserver/pkg/server/routes"
 	clientgoscheme "k8s.io/client-go/kubernetes/scheme"
+	"k8s.io/client-go/rest"
 	cliflag "k8s.io/component-base/cli/flag"
 	"k8s.io/component-base/logs"
 	logsapi "k8s.io/component-base/logs/api/v1"
@@ -53,7 +59,6 @@ import (
 	"sigs.k8s.io/controller-runtime/pkg/client"
 	"sigs.k8s.io/controller-runtime/pkg/config"
 	"sigs.k8s.io/controller-runtime/pkg/healthz"
-	"sigs.k8s.io/controller-runtime/pkg/manager"
 	metricsserver "sigs.k8s.io/controller-runtime/pkg/metrics/server"
 
 	ollamav1alpha1 "aerf.io/ollama-operator/apis/ollama/v1alpha1"
@@ -61,6 +66,8 @@ import (
 	"aerf.io/ollama-operator/internal/controllers/model"
 	"aerf.io/ollama-operator/internal/controllers/prompt"
 	"aerf.io/ollama-operator/internal/restconfig"
+
+	"aerf.io/k8sutils/k8stracing"
 
 	_ "k8s.io/client-go/plugin/pkg/client/auth"
 	_ "k8s.io/component-base/logs/json/register"
@@ -95,6 +102,10 @@ var (
 	groupKindConcurrency               = maps.Clone(dstGroupKindConcurrency)
 	tracingEndpoint                    = ""
 	tracingSampingRatePerMillion int32 = 0
+
+	blockProfileRate     = 0
+	cpuProfileRate       = 0
+	mutexProfileFraction = 0
 )
 
 func init() {
@@ -160,6 +171,15 @@ func initFlags(fs *pflag.FlagSet) {
 
 	fs.Int32Var(&tracingSampingRatePerMillion, "tracing-sampling-rate-per-million", tracingSampingRatePerMillion,
 		"The number of samples to collect per million spans. Ignored if --tracing-endpoint is not set")
+
+	fs.IntVar(&blockProfileRate, "block-profile-rate", blockProfileRate,
+		"Value to provide to runtime.SetBlockProfileRate. Not used if set to 0")
+
+	fs.IntVar(&cpuProfileRate, "cpu-profile-rate", cpuProfileRate,
+		"Value to provide to runtime.SetCPUProfileRate. Not used if set to 0")
+
+	fs.IntVar(&mutexProfileFraction, "mutex-profile-fraction", mutexProfileFraction,
+		"Value to provide to runtime.SetMutexProfileFraction. Not used if set to 0")
 }
 
 func main() {
@@ -272,18 +292,53 @@ func mainErr() error {
 		}
 	}
 
+	logLvl := atomic.NewString(strconv.Itoa(log.GetV()))
 	mgr, err := ctrl.NewManager(restCfg, ctrl.Options{
 		Scheme:                 scheme,
 		HealthProbeBindAddress: fmt.Sprintf(":%d", probePort),
 		Metrics: metricsserver.Options{
 			SecureServing: false,
 			BindAddress:   fmt.Sprintf(":%d", diagnosticsPort),
+			ExtraHandlers: map[string]http.Handler{
+				// Add handler to dynamically change log level
+				"PUT /debug/flags/v": routes.StringFlagPutHandler(func(arg string) (string, error) {
+					msg, err := logs.GlogSetter(arg)
+					if err != nil {
+						return "", err
+					}
+					logLvl.Store(arg)
+					return msg, nil
+				}),
+				"GET /debug/flags/v": http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
+					w.Header().Set("Content-Type", "text/plain")
+					w.Header().Set("X-Content-Type-Options", "nosniff")
+					w.WriteHeader(http.StatusOK)
+					fmt.Fprintln(w, logLvl.Load())
+				}),
+				// Add pprof handler.
+				"GET /debug/pprof/":        http.HandlerFunc(pprof.Index),
+				"GET /debug/pprof/cmdline": http.HandlerFunc(pprof.Cmdline),
+				"GET /debug/pprof/profile": http.HandlerFunc(pprof.Profile),
+				"GET /debug/pprof/symbol":  http.HandlerFunc(pprof.Symbol),
+				"GET /debug/pprof/trace":   http.HandlerFunc(pprof.Trace),
+				"GET /debug/fgprof":        fgprof.Handler(),
+			},
 		},
 		LeaderElection:   enableLeaderElection,
 		LeaderElectionID: "ollama-operator.aerf.io",
 		LeaseDuration:    &leaderElectionLeaseDuration,
 		RenewDeadline:    &leaderElectionRenewDeadline,
 		RetryPeriod:      &leaderElectionRetryPeriod,
+		NewClient: func(cfg *rest.Config, opts client.Options) (client.Client, error) {
+			cli, err := client.New(cfg, opts)
+			if err != nil {
+				return nil, err
+			}
+			cli = client.WithFieldValidation(cli, metav1.FieldValidationStrict)
+			cli = client.WithFieldOwner(cli, "ollama-operator")
+			cli = k8stracing.NewK8sClient(cli, tp)
+			return cli, nil
+		},
 		// LeaderElectionReleaseOnCancel defines if the leader should step down voluntarily
 		// when the Manager ends. This requires the binary to immediately end when the
 		// Manager is stopped, otherwise, this setting is unsafe. Setting this significantly
@@ -320,21 +375,12 @@ func mainErr() error {
 		),
 	}
 
-	if err = model.NewReconciler(
-		mgr.GetClient(),
-		mgr.GetEventRecorderFor("model-controller"),
-		httpCli,
-		tp,
-	).SetupWithManager(mgr, tp); err != nil {
-		return fmt.Errorf("failed to create Model controller: %s", err)
+	if err := model.SetupWithManager(mgr, httpCli, tp); err != nil {
+		return fmt.Errorf("failed to setup Model controller: %s", err)
 	}
-	if err = prompt.NewReconciler(
-		mgr.GetClient(),
-		mgr.GetEventRecorderFor("prompt-controller"),
-		httpCli,
-		tp,
-	).SetupWithManager(mgr, tp); err != nil {
-		return fmt.Errorf("failed to create Prompt controller: %s", err)
+
+	if err := prompt.SetupWithManager(mgr, httpCli, tp); err != nil {
+		return fmt.Errorf("failed to setup Prompt controller: %s", err)
 	}
 
 	if err := mgr.AddHealthzCheck("healthz", healthz.Ping); err != nil {
@@ -344,15 +390,15 @@ func mainErr() error {
 		return fmt.Errorf("failed to add readyz checker: %s", err)
 	}
 
-	if err := mgr.Add(manager.RunnableFunc(func(ctx context.Context) error {
-		<-ctx.Done()
-		log.Info("shutting down tracing provider")
-		shutdownCtx, cancel := context.WithTimeout(context.Background(), 10*time.Second)
-		defer cancel()
-
-		return tp.Shutdown(shutdownCtx)
-	})); err != nil {
-		return fmt.Errorf("failed to properly shutdown tracing provider: %s", err)
+	if blockProfileRate != 0 {
+		stdruntime.SetBlockProfileRate(blockProfileRate)
+	}
+	if cpuProfileRate != 0 {
+		stdruntime.SetCPUProfileRate(cpuProfileRate)
+	}
+	if mutexProfileFraction != 0 {
+		old := stdruntime.SetMutexProfileFraction(mutexProfileFraction)
+		log.Info("reported mutexProfileFraction", "value", old)
 	}
 
 	setupLog.Info("starting manager")

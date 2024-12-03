@@ -1,6 +1,7 @@
 # ENVTEST_K8S_VERSION refers to the version of kubebuilder assets to be downloaded by envtest binary.
 ENVTEST_K8S_VERSION = 1.30.0
 KO_DOCKER_REPO ?= ko.local
+CURRENT_DIR = $(dir $(abspath $(firstword $(MAKEFILE_LIST))))
 
 # Setting SHELL to bash allows bash commands to be executed by recipes.
 # Options are set to exit when a recipe line exits non-zero or a piped command fails.
@@ -40,11 +41,11 @@ generate: manifests generate-deep-copy k8s-client-gen k8s-register-gen k8s-gvk-g
 
 .PHONY: manifests
 manifests: controller-gen ## Generate WebhookConfiguration, ClusterRole and CustomResourceDefinition objects.
-	$(CONTROLLER_GEN) crd paths="./..." output:crd:artifacts:config=./helm/chart/ollama-operator/templates/crds
+	$(CONTROLLER_GEN) crd paths="$(CURRENT_DIR)/..." output:crd:artifacts:config="$(CURRENT_DIR)/helm/chart/ollama-operator/templates/crds"
 
 .PHONY: generate-deep-copy
 generate-deep-copy: controller-gen ## Generate code containing DeepCopy, DeepCopyInto, and DeepCopyObject method implementations.
-	$(CONTROLLER_GEN) object paths="./..."
+	$(CONTROLLER_GEN) object paths="$(CURRENT_DIR)/..."
 
 .PHONY: test
 test: export GOTESTFLAGS ?= -race
@@ -54,7 +55,7 @@ endif
 test: export KUBEBUILDER_CONTROLPLANE_START_TIMEOUT ?= 5m
 test: export KUBEBUILDER_CONTROLPLANE_STOP_TIMEOUT ?= 5m
 test: manifests generate-deep-copy envtest gotestsum ## Run tests.
-	KUBEBUILDER_ASSETS="$(shell $(ENVTEST) use $(ENVTEST_K8S_VERSION) --bin-dir $(LOCALBIN) -p path)" $(GOTESTSUM) --format testdox --format-hide-empty-pkg  --format-icons hivis -- $(GOTESTFLAGS) ./...
+	KUBEBUILDER_ASSETS="$(shell $(ENVTEST) use $(ENVTEST_K8S_VERSION) --bin-dir $(LOCALBIN) -p path)" $(GOTESTSUM) --format testdox --format-hide-empty-pkg  --format-icons hivis -- $(GOTESTFLAGS) "$(CURRENT_DIR)/..."
 
 .PHONY: lint
 lint: golangci-lint ## Run golangci-lint linter
@@ -70,7 +71,7 @@ lint-fix: golangci-lint ## Run golangci-lint linter and perform fixes
 
 .PHONY: fmt
 fmt: golangci-lint
-	$(GOLANGCI_LINT) run --fix --enable-only gci,gofumpt ./...
+	$(GOLANGCI_LINT) run --fix --enable-only gci,gofumpt "$(CURRENT_DIR)/..."
 
 GO_MODULE = $(shell go list -m)
 API_DIRS = $(shell find apis -mindepth 2 -type d | sed "s|^|$(shell go list -m)/|" | xargs)
@@ -111,7 +112,7 @@ container-build: $(KO) ## Build docker image with the manager.
 ##@ Dependencies
 
 ## Location to install dependencies to
-LOCALBIN ?= $(shell pwd)/bin
+LOCALBIN ?= $(CURRENT_DIR)/bin
 $(LOCALBIN):
 	mkdir -p $(LOCALBIN)
 
@@ -131,13 +132,13 @@ CHAINSAW = $(LOCALBIN)/chainsaw
 CONTROLLER_TOOLS_VERSION ?= v0.16.5
 ENVTEST_VERSION ?= release-0.19
 # renovate: datasource=github-releases depName=golangci/golangci-lint
-GOLANGCI_LINT_VERSION ?= v1.61.0
+GOLANGCI_LINT_VERSION ?= v1.62.2
 # renovate: datasource=github-releases depName=ko-build/ko
 KO_VERSION ?= v0.17.1
 # renovate: datasource=github-releases depName=gotestyourself/gotestsum
 GOTESTSUM_VERSION ?= v1.12.0
 # renovate: datasource=go depName=github.com/kubernetes/code-generator
-CODE_GENERATOR_VERSION ?= v0.31.2
+CODE_GENERATOR_VERSION ?= v0.31.3
 # renovate: datasource=go depName=github.com/kyverno/chainsaw
 CHAINSAW_VERSION ?= v0.2.11
 

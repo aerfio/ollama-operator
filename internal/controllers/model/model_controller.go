@@ -37,7 +37,6 @@ import (
 	corev1 "k8s.io/api/core/v1"
 	apierrors "k8s.io/apimachinery/pkg/api/errors"
 	apimachineryresource "k8s.io/apimachinery/pkg/api/resource"
-	metav1 "k8s.io/apimachinery/pkg/apis/meta/v1"
 	"k8s.io/apimachinery/pkg/apis/meta/v1/unstructured"
 	"k8s.io/apimachinery/pkg/runtime"
 	"k8s.io/apimachinery/pkg/types"
@@ -59,11 +58,11 @@ import (
 	"aerf.io/ollama-operator/internal/commonmeta"
 	"aerf.io/ollama-operator/internal/defaults"
 	"aerf.io/ollama-operator/internal/eventrecorder"
+	"aerf.io/ollama-operator/internal/k8serrors"
 	"aerf.io/ollama-operator/internal/ollamaclient"
 	"aerf.io/ollama-operator/internal/patches"
 
 	"aerf.io/k8sutils"
-	"aerf.io/k8sutils/k8stracing"
 	"aerf.io/k8sutils/utilreconcilers"
 )
 
@@ -72,17 +71,7 @@ type Reconciler struct {
 	recorder             record.EventRecorder
 	baseHTTPClient       *http.Client
 	tp                   trace.TracerProvider
-	ollamaClientProvider *ollamaclient.Provider
-}
-
-func NewReconciler(cli client.Client, recorder record.EventRecorder, baseHTTPClient *http.Client, tp trace.TracerProvider) *Reconciler {
-	return &Reconciler{
-		client:               client.WithFieldOwner(cli, "ollama-operator.model-controller"),
-		recorder:             recorder,
-		baseHTTPClient:       baseHTTPClient,
-		tp:                   tp,
-		ollamaClientProvider: ollamaclient.NewProvider(baseHTTPClient, tp.Tracer("ollama-client")),
-	}
+	ollamaClientProvider ollamaclient.ClientProvider
 }
 
 func (r *Reconciler) apply(ctx context.Context, obj *unstructured.Unstructured, opts ...client.PatchOption) error {
@@ -99,13 +88,14 @@ func (r *Reconciler) Reconcile(ctx context.Context, model *ollamav1alpha1.Model)
 		model.Status.OllamaImage = cmp.Or(model.Spec.OllamaImage, defaults.OllamaImage)
 		if retErr != nil {
 			model.SetConditionsWithObservedGeneration(xpv1.ReconcileError(retErr))
+			model.SetConditionsWithObservedGeneration(xpv1.Unavailable()) // if the reconcile failed we can't say anything about the Model's status
 		} else {
 			model.SetConditionsWithObservedGeneration(xpv1.ReconcileSuccess())
 		}
 
 		patchErr := r.client.Status().Update(ctx, model)
 		if patchErr != nil {
-			retErr = errors.Join(retErr, patchErr)
+			retErr = errors.Join(retErr, fmt.Errorf("while patching status: %s", patchErr))
 		}
 	}()
 
@@ -117,13 +107,24 @@ func (r *Reconciler) Reconcile(ctx context.Context, model *ollamav1alpha1.Model)
 
 	resources, err := Resources(model)
 	if err != nil {
-		return ctrl.Result{}, err
+		return ctrl.Result{}, fmt.Errorf("while creating resources: %s", err)
 	}
 
 	for _, res := range resources {
 		log.V(1).Info("Applying object", "object", res)
 		if err := r.apply(ctx, res); err != nil {
-			return ctrl.Result{}, err
+			if !k8serrors.IsImmutable(err) {
+				return ctrl.Result{}, err
+			}
+
+			if !model.Spec.RecreateOnImmutableError {
+				recorder.WarningEventf("IncorrectPatch", "Model has an invalid patch to an immutable field. Either change the patch or set 'spec.recreateOnImmutableError=true': %s", err)
+				return ctrl.Result{}, reconcile.TerminalError(err) // do not retry reconcile in this case, it needs manual action from the user to fix the situation
+			}
+			log.V(1).Info("recreating object due to the spec.recreateOnImmutableError", "objectGVK", res.GroupVersionKind(), "objectName", res.GetName(), "objectNamespace", res.GetNamespace())
+			recorder.NormalEventf("RecreatingDueToImmutableField", "Recreating %s %s/%s due to spec.recreateOnImmutableError=true", res.GroupVersionKind().Kind, res.GetName(), res.GetNamespace())
+			err = r.client.Delete(ctx, res)
+			return ctrl.Result{}, client.IgnoreNotFound(err)
 		}
 	}
 
@@ -134,7 +135,7 @@ func (r *Reconciler) Reconcile(ctx context.Context, model *ollamav1alpha1.Model)
 	}, sts); err != nil {
 		if apierrors.IsNotFound(err) {
 			model.SetConditionsWithObservedGeneration(xpv1.Creating())
-			return ctrl.Result{RequeueAfter: 3 * time.Second}, nil
+			return ctrl.Result{}, nil
 		}
 		return ctrl.Result{}, errors.Wrap(err, "failed to fetch statefulset to check its readiness")
 	}
@@ -260,13 +261,24 @@ func isStatefulSetReady(sts *appsv1.StatefulSet) (string, bool, error) {
 	return strings.TrimSuffix(msg, "...\n"), ready, nil
 }
 
-// SetupWithManager sets up the controller with the Manager.
-func (r *Reconciler) SetupWithManager(mgr ctrl.Manager, tp trace.TracerProvider) error {
-	k8sCli := client.WithFieldOwner(
-		client.WithFieldValidation(
-			k8stracing.NewK8sClient(mgr.GetClient(), tp),
-			metav1.FieldValidationStrict),
-		"ollama-operator.prompt-controller")
+func newReconciler(cli client.Client, recorder record.EventRecorder, baseHTTPClient *http.Client, tp trace.TracerProvider) *Reconciler {
+	return &Reconciler{
+		client:               cli,
+		recorder:             recorder,
+		baseHTTPClient:       baseHTTPClient,
+		ollamaClientProvider: ollamaclient.NewProvider(baseHTTPClient, tp.Tracer("ollama-client")),
+		tp:                   tp,
+	}
+}
+
+func SetupWithManager(mgr ctrl.Manager, baseHTTPClient *http.Client, tp trace.TracerProvider) error {
+	r := newReconciler(mgr.GetClient(), mgr.GetEventRecorderFor("ollama-operator.model-controller"), baseHTTPClient, tp)
+	reconciler := reconcile.AsReconciler(mgr.GetClient(), r)
+	reconciler = utilreconcilers.NewWithTracingReconciler(
+		reconciler,
+		tp.Tracer("model-controller", trace.WithInstrumentationAttributes(attribute.Stringer("controller-gvk", ollamav1alpha1.ModelGroupVersionKind))),
+	)
+	reconciler = utilreconcilers.RequeueOnConflict(reconciler)
 
 	return ctrl.NewControllerManagedBy(mgr).
 		For(&ollamav1alpha1.Model{}).
@@ -279,12 +291,7 @@ func (r *Reconciler) SetupWithManager(mgr ctrl.Manager, tp trace.TracerProvider)
 			}
 			return log.WithValues("name", req.Name, "namespace", req.Namespace)
 		}).
-		Complete(
-			utilreconcilers.NewWithTracingReconciler(
-				errors.WithSilentRequeueOnConflict(reconcile.AsReconciler[*ollamav1alpha1.Model](k8sCli, r)),
-				tp.Tracer("model-controller", trace.WithInstrumentationAttributes(attribute.Stringer("controller-gvk", ollamav1alpha1.ModelGroupVersionKind))),
-			),
-		)
+		Complete(reconciler)
 }
 
 func Resources(model *ollamav1alpha1.Model) ([]*unstructured.Unstructured, error) {
