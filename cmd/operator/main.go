@@ -17,6 +17,7 @@ limitations under the License.
 package main
 
 import (
+	"context"
 	"flag"
 	"fmt"
 	"maps"
@@ -59,6 +60,7 @@ import (
 	"sigs.k8s.io/controller-runtime/pkg/client"
 	"sigs.k8s.io/controller-runtime/pkg/config"
 	"sigs.k8s.io/controller-runtime/pkg/healthz"
+	"sigs.k8s.io/controller-runtime/pkg/manager"
 	metricsserver "sigs.k8s.io/controller-runtime/pkg/metrics/server"
 
 	ollamav1alpha1 "aerf.io/ollama-operator/apis/ollama/v1alpha1"
@@ -388,6 +390,17 @@ func mainErr() error {
 	}
 	if err := mgr.AddReadyzCheck("readyz", healthz.Ping); err != nil {
 		return fmt.Errorf("failed to add readyz checker: %s", err)
+	}
+
+	if err := mgr.Add(manager.RunnableFunc(func(ctx context.Context) error {
+		<-ctx.Done()
+		// new context, not based on ctx
+		shutdownCtx, shutdownCancel := context.WithTimeout(context.Background(), time.Second*10)
+		defer shutdownCancel()
+		log.V(1).Info("shutting down tracing provider")
+		return errors.Wrap(tp.Shutdown(shutdownCtx), "failed to shutdown tracing provider")
+	})); err != nil {
+		return fmt.Errorf("failed to add runnable func: %s", err)
 	}
 
 	if blockProfileRate != 0 {
