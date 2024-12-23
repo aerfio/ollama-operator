@@ -138,9 +138,9 @@ KO_VERSION ?= v0.17.1
 # renovate: datasource=github-releases depName=gotestyourself/gotestsum
 GOTESTSUM_VERSION ?= v1.12.0
 # renovate: datasource=go depName=github.com/kubernetes/code-generator
-CODE_GENERATOR_VERSION ?= v0.31.3
+CODE_GENERATOR_VERSION ?= v0.32.0
 # renovate: datasource=go depName=github.com/kyverno/chainsaw
-CHAINSAW_VERSION ?= v0.2.11
+CHAINSAW_VERSION ?= v0.2.12
 
 .PHONY: controller-gen
 controller-gen: $(CONTROLLER_GEN) ## Download controller-gen locally if necessary.
