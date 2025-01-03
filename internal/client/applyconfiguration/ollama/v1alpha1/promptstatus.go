@@ -28,7 +28,7 @@ func PromptStatus() *PromptStatusApplyConfiguration {
 // If called multiple times, values provided by each call will be appended to the Conditions field.
 func (b *PromptStatusApplyConfiguration) WithConditions(values ...v1.Condition) *PromptStatusApplyConfiguration {
 	for i := range values {
-		b.Conditions = append(b.Conditions, values[i])
+		b.ConditionedStatusApplyConfiguration.Conditions = append(b.ConditionedStatusApplyConfiguration.Conditions, values[i])
 	}
 	return b
 }
