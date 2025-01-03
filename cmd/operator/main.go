@@ -112,7 +112,7 @@ var (
 
 func init() {
 	utilruntime.Must(clientgoscheme.AddToScheme(scheme))
-	utilruntime.Must(ollamav1alpha1.Install(scheme))
+	utilruntime.Must(ollamav1alpha1.AddToScheme(scheme))
 }
 
 func initFlags(fs *pflag.FlagSet) {
