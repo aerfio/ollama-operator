@@ -127,7 +127,7 @@ func (r *Reconciler) Reconcile(ctx context.Context, prompt *ollamav1alpha1.Promp
 		return reconcile.Result{}, fmt.Errorf("failed to fetch model: %w", err)
 	}
 
-	if !referencedModel.Status.Equal(xpv1.NewConditionedStatus(xpv1.Available(), xpv1.ReconcileSuccess())) {
+	if !referencedModel.Status.Equal(ollamav1alpha1.NewConditionedStatus(xpv1.Available(), xpv1.ReconcileSuccess())) {
 		prompt.SetConditionsWithObservedGeneration(xpv1.Unavailable().WithMessage("Model is not ready and synced"))
 		return reconcile.Result{}, nil
 	}

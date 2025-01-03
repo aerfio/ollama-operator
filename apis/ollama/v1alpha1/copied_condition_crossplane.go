@@ -1,6 +1,8 @@
 package v1alpha1
 
 import (
+	"sort"
+
 	xpv1 "github.com/crossplane/crossplane-runtime/apis/common/v1"
 	corev1 "k8s.io/api/core/v1"
 )
@@ -76,4 +78,34 @@ func (s *ConditionedStatus) SetConditions(c ...xpv1.Condition) {
 			s.Conditions = append(s.Conditions, newC)
 		}
 	}
+}
+
+// Equal returns true if the status is identical to the supplied status,
+// ignoring the LastTransitionTimes and order of statuses.
+func (s *ConditionedStatus) Equal(other *ConditionedStatus) bool {
+	if s == nil || other == nil {
+		return s == nil && other == nil
+	}
+
+	if len(other.Conditions) != len(s.Conditions) {
+		return false
+	}
+
+	sc := make([]xpv1.Condition, len(s.Conditions))
+	copy(sc, s.Conditions)
+
+	oc := make([]xpv1.Condition, len(other.Conditions))
+	copy(oc, other.Conditions)
+
+	// We should not have more than one condition of each type.
+	sort.Slice(sc, func(i, j int) bool { return sc[i].Type < sc[j].Type })
+	sort.Slice(oc, func(i, j int) bool { return oc[i].Type < oc[j].Type })
+
+	for i := range sc {
+		if !sc[i].Equal(oc[i]) {
+			return false
+		}
+	}
+
+	return true
 }
