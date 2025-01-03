@@ -144,3 +144,7 @@ type PromptList struct {
 	metav1.ListMeta `json:"metadata,omitempty"`
 	Items           []Prompt `json:"items"`
 }
+
+func init() {
+	SchemeBuilder.Register(&Prompt{}, &PromptList{})
+}
