@@ -16,6 +16,8 @@ import (
 func ForKind(kind schema.GroupVersionKind) interface{} {
 	switch kind {
 	// Group=ollama.aerf.io, Version=v1alpha1
+	case v1alpha1.SchemeGroupVersion.WithKind("ConditionedStatus"):
+		return &ollamav1alpha1.ConditionedStatusApplyConfiguration{}
 	case v1alpha1.SchemeGroupVersion.WithKind("ConfigMapKeySelector"):
 		return &ollamav1alpha1.ConfigMapKeySelectorApplyConfiguration{}
 	case v1alpha1.SchemeGroupVersion.WithKind("ConfigMapReference"):
