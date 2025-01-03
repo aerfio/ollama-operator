@@ -9,12 +9,12 @@ import (
 // PromptStatusApplyConfiguration represents a declarative configuration of the PromptStatus type for use
 // with apply.
 type PromptStatusApplyConfiguration struct {
-	v1.ConditionedStatus  `json:",inline"`
-	ObservedGeneration    *int64                                   `json:"observedGeneration,omitempty"`
-	Response              *string                                  `json:"response,omitempty"`
-	Context               *string                                  `json:"context,omitempty"`
-	PromptResponseMeta    *PromptResponseMetaApplyConfiguration    `json:"meta,omitempty"`
-	PromptResponseMetrics *PromptResponseMetricsApplyConfiguration `json:"metrics,omitempty"`
+	ConditionedStatusApplyConfiguration `json:",inline"`
+	ObservedGeneration                  *int64                                   `json:"observedGeneration,omitempty"`
+	Response                            *string                                  `json:"response,omitempty"`
+	Context                             *string                                  `json:"context,omitempty"`
+	PromptResponseMeta                  *PromptResponseMetaApplyConfiguration    `json:"meta,omitempty"`
+	PromptResponseMetrics               *PromptResponseMetricsApplyConfiguration `json:"metrics,omitempty"`
 }
 
 // PromptStatusApplyConfiguration constructs a declarative configuration of the PromptStatus type for use with

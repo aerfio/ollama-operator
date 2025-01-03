@@ -9,10 +9,10 @@ import (
 // ModelStatusApplyConfiguration represents a declarative configuration of the ModelStatus type for use
 // with apply.
 type ModelStatusApplyConfiguration struct {
-	v1.ConditionedStatus `json:",inline"`
-	ObservedGeneration   *int64                                `json:"observedGeneration,omitempty"`
-	OllamaImage          *string                               `json:"ollamaImage,omitempty"`
-	OllamaModelDetails   *OllamaModelDetailsApplyConfiguration `json:"modelDetails,omitempty"`
+	ConditionedStatusApplyConfiguration `json:",inline"`
+	ObservedGeneration                  *int64                                `json:"observedGeneration,omitempty"`
+	OllamaImage                         *string                               `json:"ollamaImage,omitempty"`
+	OllamaModelDetails                  *OllamaModelDetailsApplyConfiguration `json:"modelDetails,omitempty"`
 }
 
 // ModelStatusApplyConfiguration constructs a declarative configuration of the ModelStatus type for use with
