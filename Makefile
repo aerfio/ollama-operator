@@ -123,18 +123,18 @@ CHAINSAW = $(LOCALBIN)/chainsaw
 ## Tool Versions
 
 # renovate: datasource=github-releases depName=kubernetes-sigs/controller-tools
-CONTROLLER_TOOLS_VERSION ?= v0.16.5
+CONTROLLER_TOOLS_VERSION ?= v0.17.0
 ENVTEST_VERSION ?= release-0.19
 # renovate: datasource=github-releases depName=golangci/golangci-lint
-GOLANGCI_LINT_VERSION ?= v1.62.2
+GOLANGCI_LINT_VERSION ?= v1.63.4
 # renovate: datasource=github-releases depName=ko-build/ko
 KO_VERSION ?= v0.17.1
 # renovate: datasource=github-releases depName=gotestyourself/gotestsum
 GOTESTSUM_VERSION ?= v1.12.0
 # renovate: datasource=go depName=github.com/kubernetes/code-generator
-CODE_GENERATOR_VERSION ?= v0.31.3
+CODE_GENERATOR_VERSION ?= v0.32.0
 # renovate: datasource=go depName=github.com/kyverno/chainsaw
-CHAINSAW_VERSION ?= v0.2.11
+CHAINSAW_VERSION ?= v0.2.12
 
 .PHONY: controller-gen
 controller-gen: $(CONTROLLER_GEN) ## Download controller-gen locally if necessary.

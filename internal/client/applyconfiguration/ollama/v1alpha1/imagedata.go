@@ -3,14 +3,14 @@
 package v1alpha1
 
 import (
-	v1alpha1 "aerf.io/ollama-operator/apis/ollama/v1alpha1"
+	ollamav1alpha1 "aerf.io/ollama-operator/apis/ollama/v1alpha1"
 )
 
 // ImageDataApplyConfiguration represents a declarative configuration of the ImageData type for use
 // with apply.
 type ImageDataApplyConfiguration struct {
-	Format *v1alpha1.ImageFormat `json:"format,omitempty"`
-	Data   *string               `json:"data,omitempty"`
+	Format *ollamav1alpha1.ImageFormat `json:"format,omitempty"`
+	Data   *string                     `json:"data,omitempty"`
 }
 
 // ImageDataApplyConfiguration constructs a declarative configuration of the ImageData type for use with
@@ -22,7 +22,7 @@ func ImageData() *ImageDataApplyConfiguration {
 // WithFormat sets the Format field in the declarative configuration to the given value
 // and returns the receiver, so that objects can be built by chaining "With" function invocations.
 // If called multiple times, the Format field is set to the value of the last call.
-func (b *ImageDataApplyConfiguration) WithFormat(value v1alpha1.ImageFormat) *ImageDataApplyConfiguration {
+func (b *ImageDataApplyConfiguration) WithFormat(value ollamav1alpha1.ImageFormat) *ImageDataApplyConfiguration {
 	b.Format = &value
 	return b
 }

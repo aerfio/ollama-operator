@@ -26,7 +26,7 @@ func ModelStatus() *ModelStatusApplyConfiguration {
 // If called multiple times, values provided by each call will be appended to the Conditions field.
 func (b *ModelStatusApplyConfiguration) WithConditions(values ...v1.Condition) *ModelStatusApplyConfiguration {
 	for i := range values {
-		b.Conditions = append(b.Conditions, values[i])
+		b.ConditionedStatusApplyConfiguration.Conditions = append(b.ConditionedStatusApplyConfiguration.Conditions, values[i])
 	}
 	return b
 }

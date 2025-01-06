@@ -2,10 +2,6 @@
 
 package v1alpha1
 
-import (
-	runtime "k8s.io/apimachinery/pkg/runtime"
-)
-
 // PatchesApplyConfiguration represents a declarative configuration of the Patches type for use
 // with apply.
 type PatchesApplyConfiguration struct {
@@ -17,25 +13,4 @@ type PatchesApplyConfiguration struct {
 // apply.
 func Patches() *PatchesApplyConfiguration {
 	return &PatchesApplyConfiguration{}
-}
-
-// WithJSONPatch adds the given value to the JSONPatch field in the declarative configuration
-// and returns the receiver, so that objects can be build by chaining "With" function invocations.
-// If called multiple times, values provided by each call will be appended to the JSONPatch field.
-func (b *PatchesApplyConfiguration) WithJSONPatch(values ...*JSONPatchOperationApplyConfiguration) *PatchesApplyConfiguration {
-	for i := range values {
-		if values[i] == nil {
-			panic("nil value passed to WithJSONPatch")
-		}
-		b.JSONPatch = append(b.JSONPatch, *values[i])
-	}
-	return b
-}
-
-// WithMergePatch sets the MergePatch field in the declarative configuration to the given value
-// and returns the receiver, so that objects can be built by chaining "With" function invocations.
-// If called multiple times, the MergePatch field is set to the value of the last call.
-func (b *PatchesApplyConfiguration) WithMergePatch(value runtime.RawExtension) *PatchesApplyConfiguration {
-	b.MergePatch = &value
-	return b
 }
