@@ -19,7 +19,7 @@ func ConfigMapKeySelector() *ConfigMapKeySelectorApplyConfiguration {
 // and returns the receiver, so that objects can be built by chaining "With" function invocations.
 // If called multiple times, the Name field is set to the value of the last call.
 func (b *ConfigMapKeySelectorApplyConfiguration) WithName(value string) *ConfigMapKeySelectorApplyConfiguration {
-	b.Name = &value
+	b.ConfigMapReferenceApplyConfiguration.Name = &value
 	return b
 }
 
@@ -27,7 +27,7 @@ func (b *ConfigMapKeySelectorApplyConfiguration) WithName(value string) *ConfigM
 // and returns the receiver, so that objects can be built by chaining "With" function invocations.
 // If called multiple times, the Namespace field is set to the value of the last call.
 func (b *ConfigMapKeySelectorApplyConfiguration) WithNamespace(value string) *ConfigMapKeySelectorApplyConfiguration {
-	b.Namespace = &value
+	b.ConfigMapReferenceApplyConfiguration.Namespace = &value
 	return b
 }
 
