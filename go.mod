@@ -1,6 +1,6 @@
 module aerf.io/ollama-operator
 
-go 1.23.4
+go 1.23.5
 
 require (
 	aerf.io/k8sutils v0.0.0-20250107144824-7db89ab25ea2
