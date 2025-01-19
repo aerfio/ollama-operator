@@ -1,5 +1,5 @@
-aerf.io/k8sutils v0.0.0-20250107144824-7db89ab25ea2 h1:VX8+IXsCDyjHlj0RyJKFqEwlCglJXUo+B0VKsAbwOG4=
-aerf.io/k8sutils v0.0.0-20250107144824-7db89ab25ea2/go.mod h1:4Kz88Coq7m/wxf4t2UIpO/GtDyAMpNdl9T8XTi2ZBZ4=
+aerf.io/k8sutils v0.0.0-20250117121805-983aa137826e h1:bxQ61ON8iBnr/o/mj/9VJBYwIN0FeWl6eP63ZmpvwFU=
+aerf.io/k8sutils v0.0.0-20250117121805-983aa137826e/go.mod h1:CL4alLl/cwEkwiD2vgIiCbV3jTd7lxRBHmqeurxLZ44=
 dario.cat/mergo v1.0.1 h1:Ra4+bf83h2ztPIQYNP99R6m+Y7KfnARDfID+a+vLl4s=
 dario.cat/mergo v1.0.1/go.mod h1:uNxQE+84aUszobStD9th8a29P2fMDhsBdgRYvZOxGmk=
 github.com/Azure/go-ansiterm v0.0.0-20230124172434-306776ec8161 h1:L/gRVlceqvL25UVaW/CKtUDjefjrs0SPonmDGUVOYP0=
