@@ -72,6 +72,7 @@ type Reconciler struct {
 	baseHTTPClient       *http.Client
 	tp                   trace.TracerProvider
 	ollamaClientProvider ollamaclient.ClientProvider
+	timeNowFn            func() time.Time
 }
 
 func (r *Reconciler) apply(ctx context.Context, obj *unstructured.Unstructured, opts ...client.PatchOption) error {
@@ -169,21 +170,18 @@ func (r *Reconciler) Reconcile(ctx context.Context, model *ollamav1alpha1.Model)
 		recorder.NormalEventf("PullingModel", "Pulling %q model", model.Spec.Model)
 
 		pullResp := ollamaapi.ProgressResponse{}
-		progressCounter := 0
+
+		pullInitialTime := r.timeNowFn()
 		if err := ollamaCli.Pull(ctx, &ollamaapi.PullRequest{
 			Model:  model.Spec.Model,
 			Stream: ptr.To(true),
 		}, func(resp ollamaapi.ProgressResponse) error {
-			log.V(3).Info("pulling model...", "progressResponse", resp)
+			log.V(4).Info("pulling model...", "progressResponse", resp)
 			pullResp = resp
 
 			if resp.Total != 0 {
-				defer func() {
-					progressCounter += 1
-				}()
-
-				if progressCounter%10 == 0 {
-					log.Info("pulling")
+				if time.Since(pullInitialTime) > 5*time.Second {
+					pullInitialTime = r.timeNowFn()
 					return r.patchModelStatusOnPullingProgress(ctx, model, fmt.Sprintf("Progress in pulling model layer: %.2f%%, digest: %q", math.RoundToEven(float64(resp.Completed*100)/float64(resp.Total)), resp.Digest))
 				}
 			}
@@ -268,6 +266,7 @@ func newReconciler(cli client.Client, recorder record.EventRecorder, baseHTTPCli
 		baseHTTPClient:       baseHTTPClient,
 		ollamaClientProvider: ollamaclient.NewProvider(baseHTTPClient, tp.Tracer("ollama-client")),
 		tp:                   tp,
+		timeNowFn:            time.Now,
 	}
 }
 

@@ -188,7 +188,6 @@ func (r *Reconciler) Reconcile(ctx context.Context, prompt *ollamav1alpha1.Promp
 		Options:  opts,
 	}
 	err = ollamaCli.Generate(ctx, req, func(resp ollamaapi.GenerateResponse) error {
-		log.Info("resp", "resp", resp.Response)
 		generateResp = resp
 		return nil
 	})
