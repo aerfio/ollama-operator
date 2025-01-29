@@ -18,10 +18,15 @@ spec:
         - assert:
             timeout: 15s
             file: 01-assert.yaml
-    - name: 02-patch-statefulset-error
+    - name: 02-status-creating
+      try:
+        - assert:
+            timeout: 1m # sts will get recreated, might take a while to start over
+            file: 02-assert.yaml
+    - name: 03-patch-statefulset-error
       try:
         - patch:
-            file: 02-model-patch.yaml
+            file: 03-model-patch.yaml
         - assert:
             timeout: 5m # sts will get recreated, might take a while to start over
-            file: 02-assert.yaml
+            file: 03-assert.yaml
