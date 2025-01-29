@@ -4,7 +4,6 @@ metadata:
   name: smollm-135m
 status:
   (conditions[?type == 'Ready']):
-    - status: "False"
-      reason: "Creating"
+    - status: "True"
   (conditions[?type == 'Synced']):
     - status: "True"
