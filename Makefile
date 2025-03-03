@@ -37,7 +37,7 @@ help: ## Display this help.
 ##@ Development
 
 .PHONY: generate
-generate: manifests generate-deep-copy k8s-client-gen k8s-register-gen k8s-gvk-gen
+generate: manifests generate-deep-copy k8s-client-gen k8s-gvk-gen
 
 .PHONY: manifests
 manifests: controller-gen ## Generate WebhookConfiguration, ClusterRole and CustomResourceDefinition objects.
@@ -83,11 +83,6 @@ k8s-client-gen: applyconfiguration-gen
 		--output-pkg "$(GO_MODULE)/internal/client/applyconfiguration" \
 		$(API_DIRS)
 
-.PHONY: k8s-register-gen
-k8s-register-gen: register-gen
-	@echo ">> generating generated.register.go..."
-	@$(REGISTER_GEN) $(API_DIRS)
-
 .PHONY: k8s-gvk-gen
 k8s-gvk-gen:
 	@echo ">> Generating generate.gvk.go"
@@ -118,7 +113,6 @@ $(LOCALBIN):
 
 ## Tool Binaries
 APPLYCONFIGURATION_GEN ?= $(LOCALBIN)/applyconfiguration-gen
-REGISTER_GEN ?= $(LOCALBIN)/register-gen
 CONTROLLER_GEN ?= $(LOCALBIN)/controller-gen
 ENVTEST ?= $(LOCALBIN)/setup-envtest
 GOLANGCI_LINT = $(LOCALBIN)/golangci-lint
@@ -129,18 +123,18 @@ CHAINSAW = $(LOCALBIN)/chainsaw
 ## Tool Versions
 
 # renovate: datasource=github-releases depName=kubernetes-sigs/controller-tools
-CONTROLLER_TOOLS_VERSION ?= v0.16.5
+CONTROLLER_TOOLS_VERSION ?= v0.17.2
 ENVTEST_VERSION ?= release-0.19
 # renovate: datasource=github-releases depName=golangci/golangci-lint
-GOLANGCI_LINT_VERSION ?= v1.62.2
+GOLANGCI_LINT_VERSION ?= v1.64.5
 # renovate: datasource=github-releases depName=ko-build/ko
 KO_VERSION ?= v0.17.1
 # renovate: datasource=github-releases depName=gotestyourself/gotestsum
 GOTESTSUM_VERSION ?= v1.12.0
 # renovate: datasource=go depName=github.com/kubernetes/code-generator
-CODE_GENERATOR_VERSION ?= v0.31.3
+CODE_GENERATOR_VERSION ?= v0.32.2
 # renovate: datasource=go depName=github.com/kyverno/chainsaw
-CHAINSAW_VERSION ?= v0.2.11
+CHAINSAW_VERSION ?= v0.2.12
 
 .PHONY: controller-gen
 controller-gen: $(CONTROLLER_GEN) ## Download controller-gen locally if necessary.
@@ -176,11 +170,6 @@ $(GOTESTSUM): $(LOCALBIN)
 applyconfiguration-gen: $(APPLYCONFIGURATION_GEN) ## Download applyconfiguration-gen locally if necessary.
 $(APPLYCONFIGURATION_GEN): $(LOCALBIN)
 	$(call go-install-tool,$(APPLYCONFIGURATION_GEN),k8s.io/code-generator/cmd/applyconfiguration-gen,$(CODE_GENERATOR_VERSION))
-
-.PHONY: register-gen
-register-gen: $(REGISTER_GEN) ## Download register-gen locally if necessary.
-$(REGISTER_GEN): $(LOCALBIN)
-	$(call go-install-tool,$(REGISTER_GEN),k8s.io/code-generator/cmd/register-gen,$(CODE_GENERATOR_VERSION))
 
 # go-install-tool will 'go install' any package with custom target and name of binary, if it doesn't exist
 # $1 - target path with name of binary
