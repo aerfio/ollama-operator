@@ -106,7 +106,7 @@ func (a addGVKReconciler) Reconcile(ctx context.Context, object *ollamav1alpha1.
 }
 
 func TestReconciler_Reconcile(t *testing.T) {
-	require.NoError(t, ollamav1alpha1.Install(scheme.Scheme))
+	require.NoError(t, ollamav1alpha1.AddToScheme(scheme.Scheme))
 	testEnv := envtest.Environment{
 		ErrorIfCRDPathMissing: true,
 		CRDDirectoryPaths:     []string{testutils.GetCRDsDir(t)},

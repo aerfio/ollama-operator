@@ -75,7 +75,8 @@ type ModelRef struct {
 
 // PromptStatus defines the observed state of Model
 type PromptStatus struct {
-	xpv1.ConditionedStatus `json:",inline"`
+	ConditionedStatus `json:",inline"`
+
 	// ObservedGeneration is the latest metadata.generation
 	// which resulted in either a ready state, or stalled due to error
 	// it can not recover from without human intervention.
@@ -142,4 +143,8 @@ type PromptList struct {
 	metav1.TypeMeta `json:",inline"`
 	metav1.ListMeta `json:"metadata,omitempty"`
 	Items           []Prompt `json:"items"`
+}
+
+func init() {
+	SchemeBuilder.Register(&Prompt{}, &PromptList{})
 }
