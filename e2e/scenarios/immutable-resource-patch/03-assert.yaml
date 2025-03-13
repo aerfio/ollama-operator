@@ -1,9 +1,0 @@
-apiVersion: ollama.aerf.io/v1alpha1
-kind: Model
-metadata:
-  name: smollm-135m
-status:
-  (conditions[?type == 'Ready']):
-    - status: "True"
-  (conditions[?type == 'Synced']):
-    - status: "True"

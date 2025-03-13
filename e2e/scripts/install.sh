@@ -18,4 +18,5 @@ fi
 --create-namespace \
 --set-json additionalOperatorArgs='["-v=3"]' \
 --set "image.tag=$1" \
---atomic
+--atomic \
+--take-ownership
