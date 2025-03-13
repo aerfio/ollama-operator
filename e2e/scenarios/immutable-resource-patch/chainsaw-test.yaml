@@ -21,7 +21,7 @@ spec:
     - name: 02-status-creating
       try:
         - assert:
-            timeout: 1m # sts will get recreated, might take a while to start over
+            timeout: 3m # sts will get recreated, might take a while to start over
             file: 02-assert.yaml
     - name: 03-patch-statefulset-error
       try:
