@@ -1,5 +1,5 @@
 # ENVTEST_K8S_VERSION refers to the version of kubebuilder assets to be downloaded by envtest binary.
-ENVTEST_K8S_VERSION = 1.30.0
+ENVTEST_K8S_VERSION = 1.33
 KO_DOCKER_REPO ?= ko.local
 CURRENT_DIR = $(dir $(abspath $(firstword $(MAKEFILE_LIST))))
 
@@ -123,14 +123,14 @@ CHAINSAW = $(LOCALBIN)/chainsaw
 ## Tool Versions
 
 # renovate: datasource=github-releases depName=kubernetes-sigs/controller-tools
-CONTROLLER_TOOLS_VERSION ?= v0.17.2
+CONTROLLER_TOOLS_VERSION ?= v0.18.0
 ENVTEST_VERSION ?= release-0.19
 # renovate: datasource=github-releases depName=golangci/golangci-lint
-GOLANGCI_LINT_VERSION ?= v1.64.5
+GOLANGCI_LINT_VERSION ?= v2.1.6
 # renovate: datasource=github-releases depName=ko-build/ko
-KO_VERSION ?= v0.17.1
+KO_VERSION ?= v0.18.0
 # renovate: datasource=github-releases depName=gotestyourself/gotestsum
-GOTESTSUM_VERSION ?= v1.12.0
+GOTESTSUM_VERSION ?= v1.12.2
 # renovate: datasource=go depName=github.com/kubernetes/code-generator
 CODE_GENERATOR_VERSION ?= v0.33.0
 # renovate: datasource=go depName=github.com/kyverno/chainsaw
@@ -149,7 +149,7 @@ $(ENVTEST): $(LOCALBIN)
 .PHONY: golangci-lint
 golangci-lint: $(GOLANGCI_LINT) ## Download golangci-lint locally if necessary.
 $(GOLANGCI_LINT): $(LOCALBIN)
-	$(call go-install-tool,$(GOLANGCI_LINT),github.com/golangci/golangci-lint/cmd/golangci-lint,$(GOLANGCI_LINT_VERSION))
+	$(call go-install-tool,$(GOLANGCI_LINT),github.com/golangci/golangci-lint/v2/cmd/golangci-lint,$(GOLANGCI_LINT_VERSION))
 
 .PHONY: ko
 ko: $(KO)
