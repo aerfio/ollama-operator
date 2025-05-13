@@ -4,8 +4,8 @@ package applyconfiguration
 
 import (
 	v1alpha1 "aerf.io/ollama-operator/apis/ollama/v1alpha1"
-	internal "aerf.io/ollama-operator/internal/client/applyconfiguration/internal"
-	ollamav1alpha1 "aerf.io/ollama-operator/internal/client/applyconfiguration/ollama/v1alpha1"
+	internal "aerf.io/ollama-operator/apis/ollama/v1alpha1/applyconfiguration/internal"
+	ollamav1alpha1 "aerf.io/ollama-operator/apis/ollama/v1alpha1/applyconfiguration/ollama/v1alpha1"
 	runtime "k8s.io/apimachinery/pkg/runtime"
 	schema "k8s.io/apimachinery/pkg/runtime/schema"
 	testing "k8s.io/client-go/testing"

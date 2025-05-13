@@ -71,16 +71,16 @@ lint-fix: golangci-lint ## Run golangci-lint linter and perform fixes
 
 .PHONY: fmt
 fmt: golangci-lint
-	$(GOLANGCI_LINT) run --fix --enable-only gci,gofumpt "$(CURRENT_DIR)/..."
+	$(GOLANGCI_LINT) fmt
 
 GO_MODULE = $(shell go list -m)
 API_DIRS = $(shell find apis -mindepth 2 -type d | sed "s|^|$(shell go list -m)/|" | xargs)
 .PHONY: k8s-client-gen
 k8s-client-gen: applyconfiguration-gen
-	@echo ">> generating internal/client/applyconfiguration..."
+	@echo ">> generating applyconfigurations..."
 	@$(APPLYCONFIGURATION_GEN) \
-		--output-dir "internal/client/applyconfiguration" \
-		--output-pkg "$(GO_MODULE)/internal/client/applyconfiguration" \
+		--output-dir "./apis/ollama/v1alpha1/applyconfiguration" \
+		--output-pkg "$(GO_MODULE)/apis/ollama/v1alpha1/applyconfiguration" \
 		$(API_DIRS)
 
 .PHONY: k8s-gvk-gen
@@ -124,7 +124,7 @@ CHAINSAW = $(LOCALBIN)/chainsaw
 
 # renovate: datasource=github-releases depName=kubernetes-sigs/controller-tools
 CONTROLLER_TOOLS_VERSION ?= v0.18.0
-ENVTEST_VERSION ?= release-0.19
+ENVTEST_VERSION ?= release-0.20
 # renovate: datasource=github-releases depName=golangci/golangci-lint
 GOLANGCI_LINT_VERSION ?= v2.1.6
 # renovate: datasource=github-releases depName=ko-build/ko
