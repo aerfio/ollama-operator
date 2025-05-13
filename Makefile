@@ -37,11 +37,11 @@ help: ## Display this help.
 ##@ Development
 
 .PHONY: generate
-generate: manifests generate-deep-copy k8s-client-gen k8s-gvk-gen
+generate: manifests generate-deep-copy
 
 .PHONY: manifests
 manifests: controller-gen ## Generate WebhookConfiguration, ClusterRole and CustomResourceDefinition objects.
-	$(CONTROLLER_GEN) crd paths="$(CURRENT_DIR)/..." output:crd:artifacts:config="$(CURRENT_DIR)/helm/chart/ollama-operator/templates/crds"
+	$(CONTROLLER_GEN) crd applyconfiguration paths="$(CURRENT_DIR)/..." output:crd:artifacts:config="$(CURRENT_DIR)/helm/chart/ollama-operator/templates/crds"
 
 .PHONY: generate-deep-copy
 generate-deep-copy: controller-gen ## Generate code containing DeepCopy, DeepCopyInto, and DeepCopyObject method implementations.
@@ -73,21 +73,6 @@ lint-fix: golangci-lint ## Run golangci-lint linter and perform fixes
 fmt: golangci-lint
 	$(GOLANGCI_LINT) fmt
 
-GO_MODULE = $(shell go list -m)
-API_DIRS = $(shell find apis -mindepth 2 -type d | sed "s|^|$(shell go list -m)/|" | xargs)
-.PHONY: k8s-client-gen
-k8s-client-gen: applyconfiguration-gen
-	@echo ">> generating applyconfigurations..."
-	@$(APPLYCONFIGURATION_GEN) \
-		--output-dir "./apis/ollama/v1alpha1/applyconfiguration" \
-		--output-pkg "$(GO_MODULE)/apis/ollama/v1alpha1/applyconfiguration" \
-		$(API_DIRS)
-
-.PHONY: k8s-gvk-gen
-k8s-gvk-gen:
-	@echo ">> Generating generate.gvk.go"
-	@go run ./cmd/gvk-gen $(API_DIRS)
-
 ##@ Build
 
 .PHONY: build
@@ -112,7 +97,6 @@ $(LOCALBIN):
 	mkdir -p $(LOCALBIN)
 
 ## Tool Binaries
-APPLYCONFIGURATION_GEN ?= $(LOCALBIN)/applyconfiguration-gen
 CONTROLLER_GEN ?= $(LOCALBIN)/controller-gen
 ENVTEST ?= $(LOCALBIN)/setup-envtest
 GOLANGCI_LINT = $(LOCALBIN)/golangci-lint
@@ -165,11 +149,6 @@ $(CHAINSAW): $(LOCALBIN)
 gotestsum: $(GOTESTSUM)
 $(GOTESTSUM): $(LOCALBIN)
 	$(call go-install-tool,$(GOTESTSUM),gotest.tools/gotestsum,$(GOTESTSUM_VERSION))
-
-.PHONY: applyconfiguration-gen
-applyconfiguration-gen: $(APPLYCONFIGURATION_GEN) ## Download applyconfiguration-gen locally if necessary.
-$(APPLYCONFIGURATION_GEN): $(LOCALBIN)
-	$(call go-install-tool,$(APPLYCONFIGURATION_GEN),k8s.io/code-generator/cmd/applyconfiguration-gen,$(CODE_GENERATOR_VERSION))
 
 # go-install-tool will 'go install' any package with custom target and name of binary, if it doesn't exist
 # $1 - target path with name of binary
