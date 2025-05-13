@@ -4,4 +4,6 @@
 // @aerfio solution copied from https://github.com/statnett/image-scanner-operator, thank you!
 // +kubebuilder:object:generate=true
 // +groupName=ollama.aerf.io
+// +kubebuilder:ac:generate=true
+// +kubebuilder:ac:output:package="applyconfiguration"
 package v1alpha1

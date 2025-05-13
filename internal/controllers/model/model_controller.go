@@ -53,8 +53,8 @@ import (
 	"sigs.k8s.io/controller-runtime/pkg/reconcile"
 
 	ollamav1alpha1 "aerf.io/ollama-operator/apis/ollama/v1alpha1"
+	applyollamav1alpha1 "aerf.io/ollama-operator/apis/ollama/v1alpha1/applyconfiguration/ollama/v1alpha1"
 	"aerf.io/ollama-operator/internal/applyconfig"
-	applyollamav1alpha1 "aerf.io/ollama-operator/internal/client/applyconfiguration/ollama/v1alpha1"
 	"aerf.io/ollama-operator/internal/commonmeta"
 	"aerf.io/ollama-operator/internal/defaults"
 	"aerf.io/ollama-operator/internal/eventrecorder"
