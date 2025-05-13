@@ -1,5 +1,5 @@
 # ENVTEST_K8S_VERSION refers to the version of kubebuilder assets to be downloaded by envtest binary.
-ENVTEST_K8S_VERSION = 1.30.0
+ENVTEST_K8S_VERSION = 1.33
 KO_DOCKER_REPO ?= ko.local
 CURRENT_DIR = $(dir $(abspath $(firstword $(MAKEFILE_LIST))))
 
