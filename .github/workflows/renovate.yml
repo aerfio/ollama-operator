@@ -43,7 +43,7 @@ jobs:
       - run: |
           echo ${{ github.ref }}
       - name: Self-hosted Renovate
-        uses: renovatebot/github-action@a4578d5584ac7a60d0f831537a481de7d00b9260 # v43.0.4
+        uses: renovatebot/github-action@85b17ebd5abf43d1c34c01bd4c8dbb8d45bbc2c7 # v43.0.7
         env:
           RENOVATE_REPOSITORIES: ${{ github.repository }}
           # Use GitHub API to create commits
@@ -54,7 +54,7 @@ jobs:
         with:
           configurationFile: .github/renovate.json5
           token: ${{ steps.get_token.outputs.app_token }}
-          renovate-version: 41.40-full # renovate: datasource=docker depName=renovate packageName=ghcr.io/renovatebot/renovate
+          renovate-version: 41.61-full # renovate: datasource=docker depName=renovate packageName=ghcr.io/renovatebot/renovate
           docker-user: root
           docker-cmd-file: .github/actions/renovate/entrypoint.sh
           mount-docker-socket: true
