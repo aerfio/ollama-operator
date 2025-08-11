@@ -6,7 +6,7 @@ require (
 	aerf.io/k8sutils v0.0.0-20250522105104-912729bc10f3
 	dario.cat/mergo v1.0.2
 	github.com/alecthomas/kong v1.11.0
-	github.com/crossplane/crossplane-runtime v1.19.0
+	github.com/crossplane/crossplane-runtime/v2 v2.0.0
 	github.com/evanphx/json-patch/v5 v5.9.11
 	github.com/felixge/fgprof v0.9.5
 	github.com/go-logr/logr v1.4.2
@@ -90,7 +90,7 @@ require (
 	github.com/prometheus/common v0.62.0 // indirect
 	github.com/prometheus/procfs v0.15.1 // indirect
 	github.com/russross/blackfriday/v2 v2.1.0 // indirect
-	github.com/spf13/cobra v1.8.1 // indirect
+	github.com/spf13/cobra v1.9.1 // indirect
 	github.com/x448/float16 v0.8.4 // indirect
 	github.com/xlab/treeprint v1.2.0 // indirect
 	go.opentelemetry.io/auto/sdk v1.1.0 // indirect
