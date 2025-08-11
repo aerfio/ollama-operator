@@ -3,7 +3,7 @@
 package v1alpha1
 
 import (
-	v1 "github.com/crossplane/crossplane-runtime/apis/common/v1"
+	common "github.com/crossplane/crossplane-runtime/v2/apis/common"
 )
 
 // PromptStatusApplyConfiguration represents a declarative configuration of the PromptStatus type for use
@@ -26,7 +26,7 @@ func PromptStatus() *PromptStatusApplyConfiguration {
 // WithConditions adds the given value to the Conditions field in the declarative configuration
 // and returns the receiver, so that objects can be build by chaining "With" function invocations.
 // If called multiple times, values provided by each call will be appended to the Conditions field.
-func (b *PromptStatusApplyConfiguration) WithConditions(values ...v1.Condition) *PromptStatusApplyConfiguration {
+func (b *PromptStatusApplyConfiguration) WithConditions(values ...common.Condition) *PromptStatusApplyConfiguration {
 	for i := range values {
 		b.ConditionedStatusApplyConfiguration.Conditions = append(b.ConditionedStatusApplyConfiguration.Conditions, values[i])
 	}

@@ -3,7 +3,7 @@
 package v1alpha1
 
 import (
-	v1 "github.com/crossplane/crossplane-runtime/apis/common/v1"
+	common "github.com/crossplane/crossplane-runtime/v2/apis/common"
 )
 
 // ModelStatusApplyConfiguration represents a declarative configuration of the ModelStatus type for use
@@ -24,7 +24,7 @@ func ModelStatus() *ModelStatusApplyConfiguration {
 // WithConditions adds the given value to the Conditions field in the declarative configuration
 // and returns the receiver, so that objects can be build by chaining "With" function invocations.
 // If called multiple times, values provided by each call will be appended to the Conditions field.
-func (b *ModelStatusApplyConfiguration) WithConditions(values ...v1.Condition) *ModelStatusApplyConfiguration {
+func (b *ModelStatusApplyConfiguration) WithConditions(values ...common.Condition) *ModelStatusApplyConfiguration {
 	for i := range values {
 		b.ConditionedStatusApplyConfiguration.Conditions = append(b.ConditionedStatusApplyConfiguration.Conditions, values[i])
 	}
