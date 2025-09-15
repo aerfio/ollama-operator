@@ -11,8 +11,8 @@ import (
 	"net/http"
 	"strings"
 
-	xpv1 "github.com/crossplane/crossplane-runtime/apis/common/v1"
-	"github.com/crossplane/crossplane-runtime/pkg/errors"
+	xpv1 "github.com/crossplane/crossplane-runtime/v2/apis/common/v1"
+	"github.com/crossplane/crossplane-runtime/v2/pkg/errors"
 	"github.com/klauspost/compress/gzip"
 	"github.com/klauspost/compress/zstd"
 	ollamaapi "github.com/ollama/ollama/api"
