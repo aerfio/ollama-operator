@@ -4,12 +4,20 @@ package v1alpha1
 
 // ModelSpecApplyConfiguration represents a declarative configuration of the ModelSpec type for use
 // with apply.
+//
+// ModelSpec defines the desired state of Model
 type ModelSpecApplyConfiguration struct {
-	OllamaImage              *string                    `json:"ollamaImage,omitempty"`
-	RecreateOnImmutableError *bool                      `json:"recreateOnImmutableError,omitempty"`
-	Model                    *string                    `json:"model,omitempty"`
-	StatefulSetPatches       *PatchesApplyConfiguration `json:"statefulSetPatches,omitempty"`
-	ServicePatches           *PatchesApplyConfiguration `json:"servicePatches,omitempty"`
+	// https://hub.docker.com/r/ollama/ollama/tags
+	OllamaImage *string `json:"ollamaImage,omitempty"`
+	// Patches introduced in statefulSetPatches and/or servicePatches fields might result in such an error:
+	// "spec: Forbidden: updates to statefulset spec for fields other than 'replicas', 'ordinals', 'template', 'updateStrategy', 'persistentVolumeClaimRetentionPolicy' and 'minReadySeconds' are forbidden"
+	// If the `recreateOnImmutableError` is set to true, the child statefulSet will get recreated once such an error is encountered.
+	// If not (default), this error emerges in Model's conditions
+	RecreateOnImmutableError *bool `json:"recreateOnImmutableError,omitempty"`
+	// Model like phi3, llama3.1 etc
+	Model              *string                    `json:"model,omitempty"`
+	StatefulSetPatches *PatchesApplyConfiguration `json:"statefulSetPatches,omitempty"`
+	ServicePatches     *PatchesApplyConfiguration `json:"servicePatches,omitempty"`
 }
 
 // ModelSpecApplyConfiguration constructs a declarative configuration of the ModelSpec type for use with

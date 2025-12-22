@@ -9,6 +9,8 @@ import (
 // MergePatchApplyConfiguration represents a declarative configuration of the MergePatch type for use
 // with apply.
 type MergePatchApplyConfiguration struct {
+	// JSON Merge Patch: https://datatracker.ietf.org/doc/html/rfc7386.
+	// Note that as per RFC "it is not possible to patch part of a target that is not an object, such as to replace just some of the values in an array.". Use JSON MergePatch for that.
 	MergePatch *runtime.RawExtension `json:"mergePatch,omitempty"`
 }
 

@@ -4,9 +4,12 @@ package v1alpha1
 
 // ConfigMapKeySelectorApplyConfiguration represents a declarative configuration of the ConfigMapKeySelector type for use
 // with apply.
+//
+// A ConfigMapKeySelector is a reference to a configmap key in an arbitrary namespace.
 type ConfigMapKeySelectorApplyConfiguration struct {
 	ConfigMapReferenceApplyConfiguration `json:",inline"`
-	Key                                  *string `json:"key,omitempty"`
+	// The key to select.
+	Key *string `json:"key,omitempty"`
 }
 
 // ConfigMapKeySelectorApplyConfiguration constructs a declarative configuration of the ConfigMapKeySelector type for use with
