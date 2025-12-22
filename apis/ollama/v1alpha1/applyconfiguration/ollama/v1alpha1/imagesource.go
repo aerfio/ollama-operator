@@ -8,6 +8,8 @@ import (
 
 // ImageSourceApplyConfiguration represents a declarative configuration of the ImageSource type for use
 // with apply.
+//
+// TODO cel expression that only 1 field should be set
 type ImageSourceApplyConfiguration struct {
 	Inline          *ImageDataApplyConfiguration            `json:"inline,omitempty"`
 	SecretKeyRef    *v1.SecretKeySelector                   `json:"secretKeyRef,omitempty"`

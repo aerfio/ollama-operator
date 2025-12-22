@@ -8,6 +8,8 @@ import (
 
 // JSONPatchOperationApplyConfiguration represents a declarative configuration of the JSONPatchOperation type for use
 // with apply.
+//
+// https://datatracker.ietf.org/doc/html/rfc6902
 type JSONPatchOperationApplyConfiguration struct {
 	Op    *string               `json:"op,omitempty"`
 	Path  *string               `json:"path,omitempty"`
