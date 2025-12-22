@@ -8,7 +8,12 @@ import (
 
 // ConditionedStatusApplyConfiguration represents a declarative configuration of the ConditionedStatus type for use
 // with apply.
+//
+// NOTE(negz): Do not manipulate Conditions directly. Use the Set method.
+// A ConditionedStatus reflects the observed status of a resource. Only
+// one condition of each type may exist.
 type ConditionedStatusApplyConfiguration struct {
+	// Conditions of the resource.
 	Conditions []v1.Condition `json:"conditions,omitempty"`
 }
 
