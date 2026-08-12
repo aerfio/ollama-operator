@@ -3,7 +3,7 @@ module aerf.io/ollama-operator
 go 1.26.5
 
 require (
-	aerf.io/k8sutils v0.0.0-20250522105104-912729bc10f3
+	aerf.io/k8sutils v0.0.0-20260812081846-ede57a178516
 	dario.cat/mergo v1.0.2
 	github.com/alecthomas/kong v1.11.0
 	github.com/crossplane/crossplane-runtime v1.19.0
