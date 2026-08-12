@@ -125,7 +125,11 @@
     // regenerate manifests/deepcopy so the CRDs and generated code stay in
     // sync after dependency updates - nothing heavier
     "commands": [
-      "make generate"
+      "make generate",
+      // keep KIND_NODE_IMAGE pinned to an image actually shipped for the
+      // KIND_VERSION in ci.yaml (the release notes list the supported images).
+      // The script is a no-op when the image is already supported.
+      "./hack/update-kind-node-image.sh"
     ],
     "executionMode": "branch"
   }
