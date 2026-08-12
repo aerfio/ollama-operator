@@ -19,6 +19,7 @@ package v1alpha1
 import (
 	xpv2 "github.com/crossplane/crossplane/apis/v2/core/v2"
 	metav1 "k8s.io/apimachinery/pkg/apis/meta/v1"
+	"k8s.io/apimachinery/pkg/runtime"
 )
 
 // ModelSpec defines the desired state of Model
@@ -94,5 +95,8 @@ type ModelList struct {
 }
 
 func init() {
-	SchemeBuilder.Register(&Model{}, &ModelList{})
+	SchemeBuilder.Register(func(s *runtime.Scheme) error {
+		s.AddKnownTypes(SchemeGroupVersion, &Model{}, &ModelList{})
+		return nil
+	})
 }

@@ -74,8 +74,8 @@ type Reconciler struct {
 	timeNowFn            func() time.Time
 }
 
-func (r *Reconciler) apply(ctx context.Context, obj *unstructured.Unstructured, opts ...client.PatchOption) error {
-	return r.client.Patch(ctx, obj, client.Apply, append(opts, client.ForceOwnership)...)
+func (r *Reconciler) apply(ctx context.Context, obj *unstructured.Unstructured, opts ...client.ApplyOption) error {
+	return r.client.Apply(ctx, client.ApplyConfigurationFromUnstructured(obj), append(opts, client.ForceOwnership)...)
 }
 
 func (r *Reconciler) eventRecorderFor(obj runtime.Object) *eventrecorder.EventRecorder {

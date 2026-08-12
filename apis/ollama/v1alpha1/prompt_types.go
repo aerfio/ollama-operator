@@ -146,5 +146,8 @@ type PromptList struct {
 }
 
 func init() {
-	SchemeBuilder.Register(&Prompt{}, &PromptList{})
+	SchemeBuilder.Register(func(s *runtime.Scheme) error {
+		s.AddKnownTypes(SchemeGroupVersion, &Prompt{}, &PromptList{})
+		return nil
+	})
 }
