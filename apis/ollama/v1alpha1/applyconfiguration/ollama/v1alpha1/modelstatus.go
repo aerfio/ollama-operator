@@ -8,11 +8,16 @@ import (
 
 // ModelStatusApplyConfiguration represents a declarative configuration of the ModelStatus type for use
 // with apply.
+//
+// ModelStatus defines the observed state of Model
 type ModelStatusApplyConfiguration struct {
 	ConditionedStatusApplyConfiguration `json:",inline"`
-	ObservedGeneration                  *int64                                `json:"observedGeneration,omitempty"`
-	OllamaImage                         *string                               `json:"ollamaImage,omitempty"`
-	OllamaModelDetails                  *OllamaModelDetailsApplyConfiguration `json:"modelDetails,omitempty"`
+	// ObservedGeneration is the latest metadata.generation
+	// which resulted in either a ready state, or stalled due to error
+	// it can not recover from without human intervention.
+	ObservedGeneration *int64                                `json:"observedGeneration,omitempty"`
+	OllamaImage        *string                               `json:"ollamaImage,omitempty"`
+	OllamaModelDetails *OllamaModelDetailsApplyConfiguration `json:"modelDetails,omitempty"`
 }
 
 // ModelStatusApplyConfiguration constructs a declarative configuration of the ModelStatus type for use with

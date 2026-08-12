@@ -8,12 +8,18 @@ import (
 
 // PromptSpecApplyConfiguration represents a declarative configuration of the PromptSpec type for use
 // with apply.
+//
+// PromptSpec defines the desired state of Prompt
 type PromptSpecApplyConfiguration struct {
-	ModelRef *ModelRefApplyConfiguration     `json:"modelRef,omitempty"`
-	Prompt   *string                         `json:"prompt,omitempty"`
-	Context  *string                         `json:"context,omitempty"`
-	Suffix   *string                         `json:"suffix,omitempty"`
-	System   *string                         `json:"system,omitempty"`
+	ModelRef *ModelRefApplyConfiguration `json:"modelRef,omitempty"`
+	Prompt   *string                     `json:"prompt,omitempty"`
+	// Context is the context returned from previous prompt. Copy it from .status.context of previously run prompt. Optional field
+	Context *string `json:"context,omitempty"`
+	// Suffix is the text that comes after the inserted text.
+	Suffix *string `json:"suffix,omitempty"`
+	// System overrides the model's default system message/prompt.
+	System *string `json:"system,omitempty"`
+	// Template overrides the model's default prompt template.
 	Template *string                         `json:"template,omitempty"`
 	Options  *runtime.RawExtension           `json:"options,omitempty"`
 	Images   []ImageSourceApplyConfiguration `json:"images,omitempty"`

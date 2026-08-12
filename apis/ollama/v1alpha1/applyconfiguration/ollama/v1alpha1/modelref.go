@@ -5,7 +5,8 @@ package v1alpha1
 // ModelRefApplyConfiguration represents a declarative configuration of the ModelRef type for use
 // with apply.
 type ModelRefApplyConfiguration struct {
-	Name      *string `json:"name,omitempty"`
+	Name *string `json:"name,omitempty"`
+	// defaults to prompt namespace
 	Namespace *string `json:"namespace,omitempty"`
 }
 

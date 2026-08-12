@@ -8,13 +8,18 @@ import (
 
 // PromptStatusApplyConfiguration represents a declarative configuration of the PromptStatus type for use
 // with apply.
+//
+// PromptStatus defines the observed state of Model
 type PromptStatusApplyConfiguration struct {
 	ConditionedStatusApplyConfiguration `json:",inline"`
-	ObservedGeneration                  *int64                                   `json:"observedGeneration,omitempty"`
-	Response                            *string                                  `json:"response,omitempty"`
-	Context                             *string                                  `json:"context,omitempty"`
-	PromptResponseMeta                  *PromptResponseMetaApplyConfiguration    `json:"meta,omitempty"`
-	PromptResponseMetrics               *PromptResponseMetricsApplyConfiguration `json:"metrics,omitempty"`
+	// ObservedGeneration is the latest metadata.generation
+	// which resulted in either a ready state, or stalled due to error
+	// it can not recover from without human intervention.
+	ObservedGeneration    *int64                                   `json:"observedGeneration,omitempty"`
+	Response              *string                                  `json:"response,omitempty"`
+	Context               *string                                  `json:"context,omitempty"`
+	PromptResponseMeta    *PromptResponseMetaApplyConfiguration    `json:"meta,omitempty"`
+	PromptResponseMetrics *PromptResponseMetricsApplyConfiguration `json:"metrics,omitempty"`
 }
 
 // PromptStatusApplyConfiguration constructs a declarative configuration of the PromptStatus type for use with

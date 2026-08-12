@@ -3,13 +3,18 @@
 package v1alpha1
 
 import (
+	ollamav1alpha1 "aerf.io/ollama-operator/apis/ollama/v1alpha1"
+	internal "aerf.io/ollama-operator/apis/ollama/v1alpha1/applyconfiguration/internal"
 	metav1 "k8s.io/apimachinery/pkg/apis/meta/v1"
 	types "k8s.io/apimachinery/pkg/types"
+	managedfields "k8s.io/apimachinery/pkg/util/managedfields"
 	v1 "k8s.io/client-go/applyconfigurations/meta/v1"
 )
 
 // PromptApplyConfiguration represents a declarative configuration of the Prompt type for use
 // with apply.
+//
+// Prompt is the Schema for the models API
 type PromptApplyConfiguration struct {
 	v1.TypeMetaApplyConfiguration    `json:",inline"`
 	*v1.ObjectMetaApplyConfiguration `json:"metadata,omitempty"`
@@ -27,6 +32,49 @@ func Prompt(name, namespace string) *PromptApplyConfiguration {
 	b.WithAPIVersion("ollama.aerf.io/v1alpha1")
 	return b
 }
+
+// ExtractPromptFrom extracts the applied configuration owned by fieldManager from
+// prompt for the specified subresource. Pass an empty string for subresource to extract
+// the main resource. Common subresources include "status", "scale", etc.
+// prompt must be a unmodified Prompt API object that was retrieved from the Kubernetes API.
+// ExtractPromptFrom provides a way to perform a extract/modify-in-place/apply workflow.
+// Note that an extracted apply configuration will contain fewer fields than what the fieldManager previously
+// applied if another fieldManager has updated or force applied any of the previously applied fields.
+func ExtractPromptFrom(prompt *ollamav1alpha1.Prompt, fieldManager string, subresource string) (*PromptApplyConfiguration, error) {
+	b := &PromptApplyConfiguration{}
+	err := managedfields.ExtractInto(prompt, internal.Parser().Type("io.aerf.ollama-operator.apis.ollama.v1alpha1.Prompt"), fieldManager, b, subresource)
+	if err != nil {
+		return nil, err
+	}
+	b.WithName(prompt.Name)
+	b.WithNamespace(prompt.Namespace)
+
+	b.WithKind("Prompt")
+	b.WithAPIVersion("ollama.aerf.io/v1alpha1")
+	return b, nil
+}
+
+// ExtractPrompt extracts the applied configuration owned by fieldManager from
+// prompt. If no managedFields are found in prompt for fieldManager, a
+// PromptApplyConfiguration is returned with only the Name, Namespace (if applicable),
+// APIVersion and Kind populated. It is possible that no managed fields were found for because other
+// field managers have taken ownership of all the fields previously owned by fieldManager, or because
+// the fieldManager never owned fields any fields.
+// prompt must be a unmodified Prompt API object that was retrieved from the Kubernetes API.
+// ExtractPrompt provides a way to perform a extract/modify-in-place/apply workflow.
+// Note that an extracted apply configuration will contain fewer fields than what the fieldManager previously
+// applied if another fieldManager has updated or force applied any of the previously applied fields.
+func ExtractPrompt(prompt *ollamav1alpha1.Prompt, fieldManager string) (*PromptApplyConfiguration, error) {
+	return ExtractPromptFrom(prompt, fieldManager, "")
+}
+
+// ExtractPromptStatus extracts the applied configuration owned by fieldManager from
+// prompt for the status subresource.
+func ExtractPromptStatus(prompt *ollamav1alpha1.Prompt, fieldManager string) (*PromptApplyConfiguration, error) {
+	return ExtractPromptFrom(prompt, fieldManager, "status")
+}
+
+func (b PromptApplyConfiguration) IsApplyConfiguration() {}
 
 // WithKind sets the Kind field in the declarative configuration to the given value
 // and returns the receiver, so that objects can be built by chaining "With" function invocations.
@@ -202,8 +250,24 @@ func (b *PromptApplyConfiguration) WithStatus(value *PromptStatusApplyConfigurat
 	return b
 }
 
+// GetKind retrieves the value of the Kind field in the declarative configuration.
+func (b *PromptApplyConfiguration) GetKind() *string {
+	return b.TypeMetaApplyConfiguration.Kind
+}
+
+// GetAPIVersion retrieves the value of the APIVersion field in the declarative configuration.
+func (b *PromptApplyConfiguration) GetAPIVersion() *string {
+	return b.TypeMetaApplyConfiguration.APIVersion
+}
+
 // GetName retrieves the value of the Name field in the declarative configuration.
 func (b *PromptApplyConfiguration) GetName() *string {
 	b.ensureObjectMetaApplyConfigurationExists()
 	return b.ObjectMetaApplyConfiguration.Name
+}
+
+// GetNamespace retrieves the value of the Namespace field in the declarative configuration.
+func (b *PromptApplyConfiguration) GetNamespace() *string {
+	b.ensureObjectMetaApplyConfigurationExists()
+	return b.ObjectMetaApplyConfiguration.Namespace
 }

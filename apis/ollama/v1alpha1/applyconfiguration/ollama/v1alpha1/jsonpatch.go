@@ -5,6 +5,7 @@ package v1alpha1
 // JSONPatchApplyConfiguration represents a declarative configuration of the JSONPatch type for use
 // with apply.
 type JSONPatchApplyConfiguration struct {
+	// JSON Patch: https://datatracker.ietf.org/doc/html/rfc6902
 	JSONPatch []JSONPatchOperationApplyConfiguration `json:"jsonPatch,omitempty"`
 }
 
