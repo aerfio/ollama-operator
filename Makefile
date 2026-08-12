@@ -89,18 +89,25 @@ container-build: $(KO) ## Build docker image with the manager.
 
 ##@ Dependencies
 
+# gomodver returns the version of a Go module, honoring any replace directive.
+# It is defined before ENVTEST_VERSION/ENVTEST_K8S_VERSION (which use it) to avoid
+# empty values when make evaluates them during parsing.
+define gomodver
+$(shell go list -m -f '{{if .Replace}}{{.Replace.Version}}{{else}}{{.Version}}{{end}}' $(1) 2>/dev/null)
+endef
+
 ## Location to install dependencies to
 LOCALBIN ?= $(CURRENT_DIR)/bin
 $(LOCALBIN):
 	mkdir -p $(LOCALBIN)
 
 ## Tool Binaries
-CONTROLLER_GEN ?= $(LOCALBIN)/controller-gen
-ENVTEST ?= $(LOCALBIN)/setup-envtest
-GOLANGCI_LINT = $(LOCALBIN)/golangci-lint
-KO = $(LOCALBIN)/ko
-GOTESTSUM = $(LOCALBIN)/gotestsum
-CHAINSAW = $(LOCALBIN)/chainsaw
+CONTROLLER_GEN ?= $(LOCALBIN)/controller-gen-$(CONTROLLER_TOOLS_VERSION)
+ENVTEST ?= $(LOCALBIN)/setup-envtest-$(ENVTEST_VERSION)
+GOLANGCI_LINT = $(LOCALBIN)/golangci-lint-$(GOLANGCI_LINT_VERSION)
+KO = $(LOCALBIN)/ko-$(KO_VERSION)
+GOTESTSUM = $(LOCALBIN)/gotestsum-$(GOTESTSUM_VERSION)
+CHAINSAW = $(LOCALBIN)/chainsaw-$(CHAINSAW_VERSION)
 
 ## Tool Versions
 
@@ -163,22 +170,17 @@ gotestsum: $(GOTESTSUM)
 $(GOTESTSUM): $(LOCALBIN)
 	$(call go-install-tool,$(GOTESTSUM),gotest.tools/gotestsum,$(GOTESTSUM_VERSION))
 
-# go-install-tool will 'go install' any package with custom target and name of binary, if it doesn't exist
-# $1 - target path with name of binary
+# go-install-tool will 'go install' any package with custom target and name of binary.
+# The binary is installed to the versioned target path, so bumping the tool version
+# (e.g. CONTROLLER_TOOLS_VERSION) causes make to install the new version.
+# $1 - target path with name of binary (including the version)
 # $2 - package url which can be installed
 # $3 - specific version of package
 define go-install-tool
-@[ -f "$(1)-$(3)" ] && [ "$$(readlink -- "$(1)" 2>/dev/null)" = "$(1)-$(3)" ] || { \
-set -e; \
+@set -e; \
 package=$(2)@$(3) ;\
 echo "Downloading $${package}" ;\
-rm -f "$(1)" ;\
+rm -f "$(1)" "$(LOCALBIN)/$$(basename "$(2)")" ;\
 GOBIN="$(LOCALBIN)" go install $${package} ;\
-mv "$(LOCALBIN)/$$(basename "$(1)")" "$(1)-$(3)" ;\
-} ;\
-ln -sf "$$(realpath "$(1)-$(3)")" "$(1)"
-endef
-
-define gomodver
-$(shell go list -m -f '{{if .Replace}}{{.Replace.Version}}{{else}}{{.Version}}{{end}}' $(1) 2>/dev/null)
+mv "$(LOCALBIN)/$$(basename "$(2)")" "$(1)"
 endef
