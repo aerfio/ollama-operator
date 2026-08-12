@@ -151,9 +151,7 @@ const expected = [
   ['github-releases', 'kubernetes-sigs/controller-tools'],
   ['github-releases', 'ko-build/ko'],
   ['github-releases', 'gotestyourself/gotestsum'],
-  ['go', 'github.com/kubernetes/code-generator'],
   ['go', 'github.com/kyverno/chainsaw'],
-  ['github-releases', 'kubernetes/kubernetes'], // ENVTEST_K8S_VERSION
   ['docker', 'renovate'],
   ['docker', 'docker.io/ollama/ollama'],
 ];
