@@ -141,7 +141,7 @@ func TestReconciler_Reconcile(t *testing.T) {
 			&addGVKReconciler{
 				inner: &Reconciler{
 					client:         client.WithFieldOwner(cli, "ollama-operator"),
-					recorder:       record.NewFakeRecorder(1000),
+					recorder:       record.NewEventRecorderAdapter(record.NewFakeRecorder(1000)),
 					baseHTTPClient: &http.Client{},
 					tp:             noop.NewTracerProvider(),
 					ollamaClientProvider: &ollamaclient.TestOllamaClientProvider{

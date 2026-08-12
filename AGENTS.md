@@ -14,6 +14,10 @@ Kubernetes operator that reconciles `Model` and `Prompt` custom resources agains
 
 CI also runs `go mod tidy -diff` and `git diff --exit-code` after `make test`/`make build`, so keep go.mod tidy and commit regenerated output.
 
+## Go codebase exploration
+
+- Prefer the **gopls MCP server** (configured in `opencode.json`) and **`go doc <pkg>.<sym>`** to explore Go code (including dependencies). Do **not** read files directly in `GOMODCACHE` — use `go doc` and gopls instead.
+
 ## Architecture
 
 - `apis/ollama/v1alpha1/` — `Model` and `Prompt` types + generated applyconfiguration/deepcopy. `gvk.go` defines `ModelGroupVersionKind`/`PromptGroupVersionKind`.

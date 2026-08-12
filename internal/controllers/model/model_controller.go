@@ -44,7 +44,7 @@ import (
 	applyappsv1 "k8s.io/client-go/applyconfigurations/apps/v1"
 	applycorev1 "k8s.io/client-go/applyconfigurations/core/v1"
 	applymetav1 "k8s.io/client-go/applyconfigurations/meta/v1"
-	"k8s.io/client-go/tools/record"
+	"k8s.io/client-go/tools/events"
 	"k8s.io/kubectl/pkg/cmd/util/podcmd"
 	"k8s.io/kubectl/pkg/polymorphichelpers"
 	"k8s.io/utils/ptr"
@@ -67,7 +67,7 @@ import (
 
 type Reconciler struct {
 	client               client.Client
-	recorder             record.EventRecorder
+	recorder             events.EventRecorder
 	baseHTTPClient       *http.Client
 	tp                   trace.TracerProvider
 	ollamaClientProvider ollamaclient.ClientProvider
@@ -155,7 +155,7 @@ func (r *Reconciler) Reconcile(ctx context.Context, model *ollamav1alpha1.Model)
 		}
 
 		log.V(1).Info("started pulling ollama model")
-		recorder.NormalEventf("PullingModel", "Pulling %q model", model.Spec.Model)
+		recorder.NormalEventf("PullingModel", "PullingModel", "Pulling %q model", model.Spec.Model)
 
 		pullResp := ollamaapi.ProgressResponse{}
 
@@ -176,7 +176,7 @@ func (r *Reconciler) Reconcile(ctx context.Context, model *ollamav1alpha1.Model)
 
 			return ctx.Err() // return early on context cancel/timeout
 		}); err != nil {
-			recorder.WarningEventf("PullingModel", "failed to pull %q model", model.Spec.Model)
+			recorder.WarningEventf("PullingModel", "PullingModel", "failed to pull %q model", model.Spec.Model)
 			return ctrl.Result{}, errors.Wrapf(err, "failed to pull %q model", model.Spec.Model)
 		}
 		log.V(1).Info("pulled model", "response", pullResp)
@@ -247,7 +247,7 @@ func isStatefulSetReady(sts *appsv1.StatefulSet) (string, bool, error) {
 	return strings.TrimSuffix(msg, "...\n"), ready, nil
 }
 
-func newReconciler(cli client.Client, recorder record.EventRecorder, baseHTTPClient *http.Client, tp trace.TracerProvider) *Reconciler {
+func newReconciler(cli client.Client, recorder events.EventRecorder, baseHTTPClient *http.Client, tp trace.TracerProvider) *Reconciler {
 	return &Reconciler{
 		client:               cli,
 		recorder:             recorder,
@@ -259,7 +259,7 @@ func newReconciler(cli client.Client, recorder record.EventRecorder, baseHTTPCli
 }
 
 func SetupWithManager(mgr ctrl.Manager, baseHTTPClient *http.Client, tp trace.TracerProvider) error {
-	r := newReconciler(mgr.GetClient(), mgr.GetEventRecorderFor("ollama-operator.model-controller"), baseHTTPClient, tp)
+	r := newReconciler(mgr.GetClient(), mgr.GetEventRecorder("ollama-operator.model-controller"), baseHTTPClient, tp)
 	reconciler := reconcile.AsReconciler(mgr.GetClient(), r)
 	reconciler = utilreconcilers.NewWithTracingReconciler(
 		reconciler,

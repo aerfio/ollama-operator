@@ -23,7 +23,7 @@ import (
 	apierrors "k8s.io/apimachinery/pkg/api/errors"
 	metav1 "k8s.io/apimachinery/pkg/apis/meta/v1"
 	"k8s.io/apimachinery/pkg/types"
-	"k8s.io/client-go/tools/record"
+	"k8s.io/client-go/tools/events"
 	"k8s.io/utils/ptr"
 	ctrl "sigs.k8s.io/controller-runtime"
 	"sigs.k8s.io/controller-runtime/pkg/client"
@@ -40,12 +40,12 @@ import (
 
 type Reconciler struct {
 	client               client.Client
-	recorder             record.EventRecorder
+	recorder             events.EventRecorder
 	baseHTTPClient       *http.Client
 	ollamaClientProvider ollamaclient.ClientProvider
 }
 
-func newReconciler(cli client.Client, recorder record.EventRecorder, httpCli *http.Client, tp trace.TracerProvider) *Reconciler {
+func newReconciler(cli client.Client, recorder events.EventRecorder, httpCli *http.Client, tp trace.TracerProvider) *Reconciler {
 	return &Reconciler{
 		client:               cli,
 		recorder:             recorder,
@@ -55,7 +55,7 @@ func newReconciler(cli client.Client, recorder record.EventRecorder, httpCli *ht
 }
 
 func SetupWithManager(mgr ctrl.Manager, baseHTTPClient *http.Client, tp trace.TracerProvider) error {
-	r := newReconciler(mgr.GetClient(), mgr.GetEventRecorderFor("ollama-operator.prompt-controller"), baseHTTPClient, tp)
+	r := newReconciler(mgr.GetClient(), mgr.GetEventRecorder("ollama-operator.prompt-controller"), baseHTTPClient, tp)
 	reconciler := reconcile.AsReconciler(mgr.GetClient(), r)
 	reconciler = utilreconcilers.RequeueOnConflict(reconciler)
 	reconciler = utilreconcilers.NewWithTracingReconciler(
