@@ -7,7 +7,8 @@ import (
 )
 
 func IgnoreXPv1ConditionFields(additionalIgnoredFields ...string) cmp.Option {
-	ignoredFields := []string{"LastTransitionTime", "ObservedGeneration"}
+	ignoredFields := make([]string, 0, 2+len(additionalIgnoredFields))
+	ignoredFields = append(ignoredFields, "LastTransitionTime", "ObservedGeneration")
 	ignoredFields = append(ignoredFields, additionalIgnoredFields...)
 	return cmpopts.IgnoreFields(xpv1.Condition{}, ignoredFields...)
 }
