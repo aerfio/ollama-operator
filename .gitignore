@@ -28,3 +28,4 @@ go.work
 vendor/
 /.envrc
 /chainsaw-report.json
+/node_modules

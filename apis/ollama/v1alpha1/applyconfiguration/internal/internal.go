@@ -146,9 +146,6 @@ var schemaYAML = typed.YAMLObject(`types:
     - name: ollamaImage
       type:
         scalar: string
-    - name: recreateOnImmutableError
-      type:
-        scalar: boolean
     - name: servicePatches
       type:
         namedType: io.aerf.ollama-operator.apis.ollama.v1alpha1.Patches

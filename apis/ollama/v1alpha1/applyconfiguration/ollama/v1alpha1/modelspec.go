@@ -9,11 +9,6 @@ package v1alpha1
 type ModelSpecApplyConfiguration struct {
 	// https://hub.docker.com/r/ollama/ollama/tags
 	OllamaImage *string `json:"ollamaImage,omitempty"`
-	// Patches introduced in statefulSetPatches and/or servicePatches fields might result in such an error:
-	// "spec: Forbidden: updates to statefulset spec for fields other than 'replicas', 'ordinals', 'template', 'updateStrategy', 'persistentVolumeClaimRetentionPolicy' and 'minReadySeconds' are forbidden"
-	// If the `recreateOnImmutableError` is set to true, the child statefulSet will get recreated once such an error is encountered.
-	// If not (default), this error emerges in Model's conditions
-	RecreateOnImmutableError *bool `json:"recreateOnImmutableError,omitempty"`
 	// Model like phi3, llama3.1 etc
 	Model              *string                    `json:"model,omitempty"`
 	StatefulSetPatches *PatchesApplyConfiguration `json:"statefulSetPatches,omitempty"`
@@ -31,14 +26,6 @@ func ModelSpec() *ModelSpecApplyConfiguration {
 // If called multiple times, the OllamaImage field is set to the value of the last call.
 func (b *ModelSpecApplyConfiguration) WithOllamaImage(value string) *ModelSpecApplyConfiguration {
 	b.OllamaImage = &value
-	return b
-}
-
-// WithRecreateOnImmutableError sets the RecreateOnImmutableError field in the declarative configuration to the given value
-// and returns the receiver, so that objects can be built by chaining "With" function invocations.
-// If called multiple times, the RecreateOnImmutableError field is set to the value of the last call.
-func (b *ModelSpecApplyConfiguration) WithRecreateOnImmutableError(value bool) *ModelSpecApplyConfiguration {
-	b.RecreateOnImmutableError = &value
 	return b
 }
 
