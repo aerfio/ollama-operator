@@ -3,13 +3,13 @@
 package v1alpha1
 
 import (
-	common "github.com/crossplane/crossplane-runtime/v2/apis/common"
+	xpv2 "github.com/crossplane/crossplane/apis/v2/core/v2"
 )
 
 // ConditionedStatusApplyConfiguration represents a declarative configuration of the ConditionedStatus type for use
 // with apply.
 type ConditionedStatusApplyConfiguration struct {
-	Conditions []common.Condition `json:"conditions,omitempty"`
+	Conditions []xpv2.Condition `json:"conditions,omitempty"`
 }
 
 // ConditionedStatusApplyConfiguration constructs a declarative configuration of the ConditionedStatus type for use with
@@ -21,7 +21,7 @@ func ConditionedStatus() *ConditionedStatusApplyConfiguration {
 // WithConditions adds the given value to the Conditions field in the declarative configuration
 // and returns the receiver, so that objects can be build by chaining "With" function invocations.
 // If called multiple times, values provided by each call will be appended to the Conditions field.
-func (b *ConditionedStatusApplyConfiguration) WithConditions(values ...common.Condition) *ConditionedStatusApplyConfiguration {
+func (b *ConditionedStatusApplyConfiguration) WithConditions(values ...xpv2.Condition) *ConditionedStatusApplyConfiguration {
 	for i := range values {
 		b.Conditions = append(b.Conditions, values[i])
 	}

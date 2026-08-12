@@ -11,8 +11,8 @@ import (
 	"net/http"
 	"strings"
 
-	xpv1 "github.com/crossplane/crossplane-runtime/v2/apis/common/v1"
 	"github.com/crossplane/crossplane-runtime/v2/pkg/errors"
+	xpv2 "github.com/crossplane/crossplane/apis/v2/core/v2"
 	"github.com/klauspost/compress/gzip"
 	"github.com/klauspost/compress/zstd"
 	ollamaapi "github.com/ollama/ollama/api"
@@ -94,9 +94,9 @@ func (r *Reconciler) Reconcile(ctx context.Context, prompt *ollamav1alpha1.Promp
 	defer func() {
 		prompt.Status.ObservedGeneration = prompt.GetGeneration()
 		if retErr != nil {
-			prompt.SetConditionsWithObservedGeneration(xpv1.ReconcileError(retErr))
+			prompt.SetConditionsWithObservedGeneration(xpv2.ReconcileError(retErr))
 		} else {
-			prompt.SetConditionsWithObservedGeneration(xpv1.ReconcileSuccess())
+			prompt.SetConditionsWithObservedGeneration(xpv2.ReconcileSuccess())
 		}
 
 		patchErr := r.client.Status().Update(ctx, prompt)
@@ -120,20 +120,20 @@ func (r *Reconciler) Reconcile(ctx context.Context, prompt *ollamav1alpha1.Promp
 		Name:      prompt.Spec.ModelRef.Name,
 	}, referencedModel); err != nil {
 		if apierrors.IsNotFound(err) {
-			prompt.SetConditionsWithObservedGeneration(xpv1.Unavailable().WithMessage("Referenced model does not exist"))
+			prompt.SetConditionsWithObservedGeneration(xpv2.Unavailable().WithMessage("Referenced model does not exist"))
 			log.V(1).Info("referenced model does not exist")
 			return reconcile.Result{}, nil
 		}
 		return reconcile.Result{}, fmt.Errorf("failed to fetch model: %w", err)
 	}
 
-	if !referencedModel.Status.Equal(ollamav1alpha1.NewConditionedStatus(xpv1.Available(), xpv1.ReconcileSuccess())) {
-		prompt.SetConditionsWithObservedGeneration(xpv1.Unavailable().WithMessage("Model is not ready and synced"))
+	if !referencedModel.Status.Equal(ollamav1alpha1.NewConditionedStatus(xpv2.Available(), xpv2.ReconcileSuccess())) {
+		prompt.SetConditionsWithObservedGeneration(xpv2.Unavailable().WithMessage("Model is not ready and synced"))
 		return reconcile.Result{}, nil
 	}
 
-	waitingForResponseCond := xpv1.Creating().WithMessage("Waiting for model response")
-	if !prompt.Status.GetCondition(xpv1.TypeReady).Equal(waitingForResponseCond) {
+	waitingForResponseCond := xpv2.Creating().WithMessage("Waiting for model response")
+	if !prompt.Status.GetCondition(xpv2.TypeReady).Equal(waitingForResponseCond) {
 		prompt.SetConditionsWithObservedGeneration(waitingForResponseCond)
 		return reconcile.Result{Requeue: true}, nil
 	}
@@ -218,7 +218,7 @@ func (r *Reconciler) Reconcile(ctx context.Context, prompt *ollamav1alpha1.Promp
 		EvalRate:           fmt.Sprintf("%.2f tokens/s", float64(generateResp.EvalCount)/generateResp.EvalDuration.Seconds()),
 	}
 
-	prompt.SetConditionsWithObservedGeneration(xpv1.Available())
+	prompt.SetConditionsWithObservedGeneration(xpv2.Available())
 
 	return reconcile.Result{}, nil
 }

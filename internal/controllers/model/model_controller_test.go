@@ -6,8 +6,8 @@ import (
 	"net/http"
 	"testing"
 
-	xpv1 "github.com/crossplane/crossplane-runtime/v2/apis/common/v1"
 	"github.com/crossplane/crossplane-runtime/v2/pkg/errors"
+	xpv2 "github.com/crossplane/crossplane/apis/v2/core/v2"
 	"github.com/go-logr/logr/testr"
 	"github.com/google/go-cmp/cmp"
 	"github.com/ollama/ollama/api"
@@ -215,10 +215,10 @@ func TestReconciler_Reconcile(t *testing.T) {
 		mdl := getModel()
 		t.Logf("status: %#v", mdl.Status)
 
-		syncedCondition := mdl.GetCondition(xpv1.TypeSynced)
+		syncedCondition := mdl.GetCondition(xpv2.TypeSynced)
 		require.Equalf(t, corev1.ConditionTrue, syncedCondition.Status, "Synced condition has status True: %#v", syncedCondition)
 
-		readyCondition := mdl.GetCondition(xpv1.TypeReady)
+		readyCondition := mdl.GetCondition(xpv2.TypeReady)
 		require.Equalf(t, corev1.ConditionFalse, readyCondition.Status, "Ready condition has status False: %#v", readyCondition)
 
 		err = retry.RetryOnConflict(retry.DefaultRetry, func() error {
@@ -241,32 +241,32 @@ func TestReconciler_Reconcile(t *testing.T) {
 
 		mdl = getModel()
 		t.Logf("status: %#v", mdl.Status)
-		if diff := cmp.Diff(mdl.GetCondition(xpv1.TypeSynced), xpv1.ReconcileError(errors.New("failed to list local models: boom")), testutils.IgnoreXPv1ConditionFields()); diff != "" {
+		if diff := cmp.Diff(mdl.GetCondition(xpv2.TypeSynced), xpv2.ReconcileError(errors.New("failed to list local models: boom")), testutils.IgnoreXPv1ConditionFields()); diff != "" {
 			t.Fatalf("conditions differ, -got +want:\n%s", diff)
 		}
 
 		err = reconcileFn()
 		require.NoError(t, err)
 		mdl = getModel()
-		readyCondition = mdl.GetCondition(xpv1.TypeReady)
+		readyCondition = mdl.GetCondition(xpv2.TypeReady)
 		readyCondition.Message = "" // I have no idea why I have to override this msg if I'm ignoring this field, maybe cmpopts doesnt like ``
-		if diff := cmp.Diff(readyCondition, xpv1.Creating(), testutils.IgnoreXPv1ConditionFields("Message")); diff != "" {
+		if diff := cmp.Diff(readyCondition, xpv2.Creating(), testutils.IgnoreXPv1ConditionFields("Message")); diff != "" {
 			t.Fatalf("conditions differ, -got +want:\n%s", diff)
 		}
 
 		err = reconcileFn()
 		require.Error(t, err)
 		mdl = getModel()
-		require.Contains(t, mdl.GetCondition(xpv1.TypeSynced).Message, "show: boom")
-		require.Equal(t, corev1.ConditionFalse, mdl.GetCondition(xpv1.TypeSynced).Status)
+		require.Contains(t, mdl.GetCondition(xpv2.TypeSynced).Message, "show: boom")
+		require.Equal(t, corev1.ConditionFalse, mdl.GetCondition(xpv2.TypeSynced).Status)
 
 		err = reconcileFn()
 		require.NoError(t, err)
 		mdl = getModel()
-		if diff := cmp.Diff(mdl.GetCondition(xpv1.TypeSynced), xpv1.ReconcileSuccess(), testutils.IgnoreXPv1ConditionFields()); diff != "" {
+		if diff := cmp.Diff(mdl.GetCondition(xpv2.TypeSynced), xpv2.ReconcileSuccess(), testutils.IgnoreXPv1ConditionFields()); diff != "" {
 			t.Fatalf("conditions differ, -got +want:\n%s", diff)
 		}
-		if diff := cmp.Diff(mdl.GetCondition(xpv1.TypeReady), xpv1.Available(), testutils.IgnoreXPv1ConditionFields()); diff != "" {
+		if diff := cmp.Diff(mdl.GetCondition(xpv2.TypeReady), xpv2.Available(), testutils.IgnoreXPv1ConditionFields()); diff != "" {
 			t.Fatalf("conditions differ, -got +want:\n%s", diff)
 		}
 	})

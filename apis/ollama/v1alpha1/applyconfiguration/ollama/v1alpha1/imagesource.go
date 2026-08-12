@@ -3,14 +3,14 @@
 package v1alpha1
 
 import (
-	common "github.com/crossplane/crossplane-runtime/v2/apis/common"
+	xpv2 "github.com/crossplane/crossplane/apis/v2/core/v2"
 )
 
 // ImageSourceApplyConfiguration represents a declarative configuration of the ImageSource type for use
 // with apply.
 type ImageSourceApplyConfiguration struct {
 	Inline          *ImageDataApplyConfiguration            `json:"inline,omitempty"`
-	SecretKeyRef    *common.SecretKeySelector               `json:"secretKeyRef,omitempty"`
+	SecretKeyRef    *xpv2.SecretKeySelector                 `json:"secretKeyRef,omitempty"`
 	ConfigMapKeyRef *ConfigMapKeySelectorApplyConfiguration `json:"configMapKeyRef,omitempty"`
 }
 
@@ -31,7 +31,7 @@ func (b *ImageSourceApplyConfiguration) WithInline(value *ImageDataApplyConfigur
 // WithSecretKeyRef sets the SecretKeyRef field in the declarative configuration to the given value
 // and returns the receiver, so that objects can be built by chaining "With" function invocations.
 // If called multiple times, the SecretKeyRef field is set to the value of the last call.
-func (b *ImageSourceApplyConfiguration) WithSecretKeyRef(value common.SecretKeySelector) *ImageSourceApplyConfiguration {
+func (b *ImageSourceApplyConfiguration) WithSecretKeyRef(value xpv2.SecretKeySelector) *ImageSourceApplyConfiguration {
 	b.SecretKeyRef = &value
 	return b
 }

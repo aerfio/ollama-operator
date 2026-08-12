@@ -372,7 +372,7 @@ func mainErr() error {
 			cleanhttp.DefaultPooledTransport(),
 			otelhttp.WithPropagators(tracing.Propagators()),
 			otelhttp.WithTracerProvider(tp),
-			otelhttp.WithPublicEndpoint(),
+			otelhttp.WithPublicEndpointFn(func(*http.Request) bool { return true }),
 			otelhttp.WithMeterProvider(metricnoop.NewMeterProvider()),
 		),
 	}

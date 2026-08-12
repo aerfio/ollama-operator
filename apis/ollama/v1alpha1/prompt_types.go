@@ -17,7 +17,7 @@ limitations under the License.
 package v1alpha1
 
 import (
-	xpv1 "github.com/crossplane/crossplane-runtime/v2/apis/common/v1"
+	xpv2 "github.com/crossplane/crossplane/apis/v2/core/v2"
 	metav1 "k8s.io/apimachinery/pkg/apis/meta/v1"
 	"k8s.io/apimachinery/pkg/runtime"
 )
@@ -47,7 +47,7 @@ type PromptSpec struct {
 // TODO cel expression that only 1 field should be set
 type ImageSource struct {
 	Inline          *ImageData              `json:"inline,omitempty"`
-	SecretKeyRef    *xpv1.SecretKeySelector `json:"secretKeyRef,omitempty"`
+	SecretKeyRef    *xpv2.SecretKeySelector `json:"secretKeyRef,omitempty"`
 	ConfigMapKeyRef *ConfigMapKeySelector   `json:"configMapKeyRef,omitempty"`
 }
 
@@ -124,7 +124,7 @@ type Prompt struct {
 	Status PromptStatus `json:"status,omitempty"`
 }
 
-func (in *Prompt) SetConditionsWithObservedGeneration(c ...xpv1.Condition) {
+func (in *Prompt) SetConditionsWithObservedGeneration(c ...xpv2.Condition) {
 	for i := range c {
 		c[i].ObservedGeneration = in.Generation
 	}
@@ -132,7 +132,7 @@ func (in *Prompt) SetConditionsWithObservedGeneration(c ...xpv1.Condition) {
 	in.Status.SetConditions(c...)
 }
 
-func (in *Prompt) GetCondition(ct xpv1.ConditionType) xpv1.Condition {
+func (in *Prompt) GetCondition(ct xpv2.ConditionType) xpv2.Condition {
 	return in.Status.GetCondition(ct)
 }
 
