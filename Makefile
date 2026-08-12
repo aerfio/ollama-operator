@@ -50,9 +50,6 @@ generate-deep-copy: controller-gen ## Generate code containing DeepCopy, DeepCop
 
 .PHONY: test
 test: export GOTESTFLAGS ?= -race
-ifeq ($(detected_OS),Darwin) # see https://github.com/golang/go/issues/61229#issuecomment-1988965927, there are too many useless linker warnings that cant be fixed on Go side, waiting for Apple fix
-test: GOTESTFLAGS += -ldflags=-linkmode=internal
-endif
 test: export KUBEBUILDER_CONTROLPLANE_START_TIMEOUT ?= 5m
 test: export KUBEBUILDER_CONTROLPLANE_STOP_TIMEOUT ?= 5m
 test: manifests generate-deep-copy envtest gotestsum ## Run tests.

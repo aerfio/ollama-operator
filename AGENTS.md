@@ -5,7 +5,7 @@ Kubernetes operator that reconciles `Model` and `Prompt` custom resources agains
 ## Commands
 
 - `make generate` — regenerate code. Two steps: `manifests` (`controller-gen crd applyconfiguration`) and `generate-deep-copy` (`controller-gen object`). Output: `apis/ollama/v1alpha1/applyconfiguration/`, `zz_generated.deepcopy.go`, and CRDs under `helm/chart/ollama-operator/templates/crds/`. Never hand-edit those files.
-- `make test` — runs all packages with `-race` under envtest (auto-downloads K8s control-plane binaries via `setup-envtest`). On macOS it adds `-ldflags=-linkmode=internal` (Go issue 61229).
+- `make test` — runs all packages with `-race` under envtest (auto-downloads K8s control-plane binaries via `setup-envtest`).
 - Focused test: `KUBEBUILDER_ASSETS="$(./bin/setup-envtest-v0.24.1 use 1.36 --bin-dir bin -p path)" go test ./internal/controllers/model/...`
 - `make lint` / `make lint-fix` / `make fmt` — golangci-lint v2 (`.golangci.yml` uses `default: none` + explicit enables).
 - `make build` — builds both binaries to `./bin/`: `cmd/operator` (the controller manager) and `cmd/mergepatcher` (CLI that dry-runs merge-patch of a Model CR, see `samples/mergepatcher/`).
