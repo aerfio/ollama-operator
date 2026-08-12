@@ -1,4 +1,5 @@
 # ENVTEST_K8S_VERSION refers to the version of kubebuilder assets to be downloaded by envtest binary.
+# renovate: datasource=github-releases depName=kubernetes/kubernetes extractVersion=^v(?<version>\d+\.\d+)
 ENVTEST_K8S_VERSION = 1.33
 KO_DOCKER_REPO ?= ko.local
 CURRENT_DIR = $(dir $(abspath $(firstword $(MAKEFILE_LIST))))
@@ -110,7 +111,7 @@ CHAINSAW = $(LOCALBIN)/chainsaw
 CONTROLLER_TOOLS_VERSION ?= v0.19.0
 ENVTEST_VERSION ?= release-0.20
 # renovate: datasource=github-releases depName=golangci/golangci-lint
-GOLANGCI_LINT_VERSION ?= v2.7.2
+GOLANGCI_LINT_VERSION ?= v2.12.2
 # renovate: datasource=github-releases depName=ko-build/ko
 KO_VERSION ?= v0.18.0
 # renovate: datasource=github-releases depName=gotestyourself/gotestsum
@@ -118,7 +119,7 @@ GOTESTSUM_VERSION ?= v1.13.0
 # renovate: datasource=go depName=github.com/kubernetes/code-generator
 CODE_GENERATOR_VERSION ?= v0.33.1
 # renovate: datasource=go depName=github.com/kyverno/chainsaw
-CHAINSAW_VERSION ?= v0.2.12
+CHAINSAW_VERSION ?= v0.2.15
 
 .PHONY: controller-gen
 controller-gen: $(CONTROLLER_GEN) ## Download controller-gen locally if necessary.
