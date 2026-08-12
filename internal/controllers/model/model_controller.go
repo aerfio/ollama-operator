@@ -58,7 +58,6 @@ import (
 	"aerf.io/ollama-operator/internal/commonmeta"
 	"aerf.io/ollama-operator/internal/defaults"
 	"aerf.io/ollama-operator/internal/eventrecorder"
-	"aerf.io/ollama-operator/internal/k8serrors"
 	"aerf.io/ollama-operator/internal/ollamaclient"
 	"aerf.io/ollama-operator/internal/patches"
 
@@ -114,18 +113,7 @@ func (r *Reconciler) Reconcile(ctx context.Context, model *ollamav1alpha1.Model)
 	for _, res := range resources {
 		log.V(1).Info("Applying object", "object", res)
 		if err := r.apply(ctx, res); err != nil {
-			if !k8serrors.IsImmutable(err) {
-				return ctrl.Result{}, err
-			}
-
-			if !model.Spec.RecreateOnImmutableError {
-				recorder.WarningEventf("IncorrectPatch", "Model has an invalid patch to an immutable field. Either change the patch or set 'spec.recreateOnImmutableError=true': %s", err)
-				return ctrl.Result{}, reconcile.TerminalError(err) // do not retry reconcile in this case, it needs manual action from the user to fix the situation
-			}
-			log.V(1).Info("recreating object due to the spec.recreateOnImmutableError", "objectGVK", res.GroupVersionKind(), "objectName", res.GetName(), "objectNamespace", res.GetNamespace())
-			recorder.NormalEventf("RecreatingDueToImmutableField", "Recreating %s %s/%s due to spec.recreateOnImmutableError=true", res.GroupVersionKind().Kind, res.GetName(), res.GetNamespace())
-			err = r.client.Delete(ctx, res)
-			return ctrl.Result{}, client.IgnoreNotFound(err)
+			return ctrl.Result{}, fmt.Errorf("while applying %s %s: %s", res.GetKind(), res.GetName(), err)
 		}
 	}
 
