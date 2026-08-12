@@ -6,6 +6,10 @@ name: Validate Renovate Config
   pull_request:
     paths:
       - .github/renovate.json5
+      - .github/workflows/*.yaml
+      - hack/check-renovate-managers.mjs
+      - Makefile
+      - internal/defaults/**
 
 concurrency:
   cancel-in-progress: true
@@ -22,3 +26,5 @@ jobs:
           node-version: 24
       - name: Validate Renovate JSON
         run: npx --yes --package renovate -- renovate-config-validator
+      - name: Check custom managers match repo annotations
+        run: node hack/check-renovate-managers.mjs
