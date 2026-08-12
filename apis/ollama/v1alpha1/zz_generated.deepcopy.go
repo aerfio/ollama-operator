@@ -5,7 +5,7 @@
 package v1alpha1
 
 import (
-	"github.com/crossplane/crossplane-runtime/apis/common/v1"
+	"github.com/crossplane/crossplane/apis/v2/core/v2"
 	"k8s.io/apimachinery/pkg/runtime"
 )
 
@@ -14,7 +14,7 @@ func (in *ConditionedStatus) DeepCopyInto(out *ConditionedStatus) {
 	*out = *in
 	if in.Conditions != nil {
 		in, out := &in.Conditions, &out.Conditions
-		*out = make([]v1.Condition, len(*in))
+		*out = make([]v2.Condition, len(*in))
 		for i := range *in {
 			(*in)[i].DeepCopyInto(&(*out)[i])
 		}
@@ -87,7 +87,7 @@ func (in *ImageSource) DeepCopyInto(out *ImageSource) {
 	}
 	if in.SecretKeyRef != nil {
 		in, out := &in.SecretKeyRef, &out.SecretKeyRef
-		*out = new(v1.SecretKeySelector)
+		*out = new(v2.SecretKeySelector)
 		**out = **in
 	}
 	if in.ConfigMapKeyRef != nil {

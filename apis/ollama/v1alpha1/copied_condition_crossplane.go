@@ -3,7 +3,7 @@ package v1alpha1
 import (
 	"sort"
 
-	xpv1 "github.com/crossplane/crossplane-runtime/apis/common/v1"
+	xpv2 "github.com/crossplane/crossplane/apis/v2/core/v2"
 	corev1 "k8s.io/api/core/v1"
 )
 
@@ -29,11 +29,11 @@ type ConditionedStatus struct {
 	// +listType=map
 	// +listMapKey=type
 	// +optional
-	Conditions []xpv1.Condition `json:"conditions,omitempty"`
+	Conditions []xpv2.Condition `json:"conditions,omitempty"`
 }
 
 // NewConditionedStatus returns a stat with the supplied conditions set.
-func NewConditionedStatus(c ...xpv1.Condition) *ConditionedStatus {
+func NewConditionedStatus(c ...xpv2.Condition) *ConditionedStatus {
 	s := &ConditionedStatus{}
 	s.SetConditions(c...)
 	return s
@@ -41,21 +41,21 @@ func NewConditionedStatus(c ...xpv1.Condition) *ConditionedStatus {
 
 // GetCondition returns the condition for the given ConditionType if exists,
 // otherwise returns nil.
-func (s *ConditionedStatus) GetCondition(ct xpv1.ConditionType) xpv1.Condition {
+func (s *ConditionedStatus) GetCondition(ct xpv2.ConditionType) xpv2.Condition {
 	for _, c := range s.Conditions {
 		if c.Type == ct {
 			return c
 		}
 	}
 
-	return xpv1.Condition{Type: ct, Status: corev1.ConditionUnknown}
+	return xpv2.Condition{Type: ct, Status: corev1.ConditionUnknown}
 }
 
 // SetConditions sets the supplied conditions, replacing any existing conditions
 // of the same type. This is a no-op if all supplied conditions are identical,
 // ignoring the last transition time, to those already set.
 // Observed generation is updated if higher than the existing one.
-func (s *ConditionedStatus) SetConditions(c ...xpv1.Condition) {
+func (s *ConditionedStatus) SetConditions(c ...xpv2.Condition) {
 	for _, newC := range c {
 		exists := false
 		for i, existing := range s.Conditions {
@@ -91,10 +91,10 @@ func (s *ConditionedStatus) Equal(other *ConditionedStatus) bool {
 		return false
 	}
 
-	sc := make([]xpv1.Condition, len(s.Conditions))
+	sc := make([]xpv2.Condition, len(s.Conditions))
 	copy(sc, s.Conditions)
 
-	oc := make([]xpv1.Condition, len(other.Conditions))
+	oc := make([]xpv2.Condition, len(other.Conditions))
 	copy(oc, other.Conditions)
 
 	// We should not have more than one condition of each type.

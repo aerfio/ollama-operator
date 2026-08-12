@@ -17,8 +17,9 @@ limitations under the License.
 package v1alpha1
 
 import (
-	xpv1 "github.com/crossplane/crossplane-runtime/apis/common/v1"
+	xpv2 "github.com/crossplane/crossplane/apis/v2/core/v2"
 	metav1 "k8s.io/apimachinery/pkg/apis/meta/v1"
+	"k8s.io/apimachinery/pkg/runtime"
 )
 
 // ModelSpec defines the desired state of Model
@@ -72,7 +73,7 @@ type Model struct {
 	Status ModelStatus `json:"status,omitempty"`
 }
 
-func (in *Model) SetConditionsWithObservedGeneration(c ...xpv1.Condition) {
+func (in *Model) SetConditionsWithObservedGeneration(c ...xpv2.Condition) {
 	for i := range c {
 		c[i].ObservedGeneration = in.Generation
 	}
@@ -80,7 +81,7 @@ func (in *Model) SetConditionsWithObservedGeneration(c ...xpv1.Condition) {
 	in.Status.SetConditions(c...)
 }
 
-func (in *Model) GetCondition(ct xpv1.ConditionType) xpv1.Condition {
+func (in *Model) GetCondition(ct xpv2.ConditionType) xpv2.Condition {
 	return in.Status.GetCondition(ct)
 }
 
@@ -94,5 +95,8 @@ type ModelList struct {
 }
 
 func init() {
-	SchemeBuilder.Register(&Model{}, &ModelList{})
+	SchemeBuilder.Register(func(s *runtime.Scheme) error {
+		s.AddKnownTypes(SchemeGroupVersion, &Model{}, &ModelList{})
+		return nil
+	})
 }

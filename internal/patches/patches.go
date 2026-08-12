@@ -6,7 +6,7 @@ import (
 	"reflect"
 
 	"dario.cat/mergo"
-	"github.com/crossplane/crossplane-runtime/pkg/errors"
+	"github.com/crossplane/crossplane-runtime/v2/pkg/errors"
 	jsonpatch "github.com/evanphx/json-patch/v5"
 	"k8s.io/apimachinery/pkg/apis/meta/v1/unstructured"
 	kjson "sigs.k8s.io/json"

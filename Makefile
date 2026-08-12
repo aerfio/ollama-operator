@@ -1,6 +1,3 @@
-# ENVTEST_K8S_VERSION refers to the version of kubebuilder assets to be downloaded by envtest binary.
-# renovate: datasource=github-releases depName=kubernetes/kubernetes extractVersion=^v(?<version>\d+\.\d+)
-ENVTEST_K8S_VERSION = 1.33
 KO_DOCKER_REPO ?= ko.local
 CURRENT_DIR = $(dir $(abspath $(firstword $(MAKEFILE_LIST))))
 
@@ -52,7 +49,7 @@ generate-deep-copy: controller-gen ## Generate code containing DeepCopy, DeepCop
 test: export GOTESTFLAGS ?= -race
 test: export KUBEBUILDER_CONTROLPLANE_START_TIMEOUT ?= 5m
 test: export KUBEBUILDER_CONTROLPLANE_STOP_TIMEOUT ?= 5m
-test: manifests generate-deep-copy envtest gotestsum ## Run tests.
+test: manifests generate-deep-copy setup-envtest gotestsum ## Run tests.
 	KUBEBUILDER_ASSETS="$(shell $(ENVTEST) use $(ENVTEST_K8S_VERSION) --bin-dir $(LOCALBIN) -p path)" $(GOTESTSUM) --format testdox --format-hide-empty-pkg  --format-icons hivis -- $(GOTESTFLAGS) "$(CURRENT_DIR)/..."
 
 .PHONY: lint
@@ -89,32 +86,45 @@ container-build: $(KO) ## Build docker image with the manager.
 
 ##@ Dependencies
 
+# gomodver returns the version of a Go module, honoring any replace directive.
+# It is defined before ENVTEST_VERSION/ENVTEST_K8S_VERSION (which use it) to avoid
+# empty values when make evaluates them during parsing.
+define gomodver
+$(shell go list -m -f '{{if .Replace}}{{.Replace.Version}}{{else}}{{.Version}}{{end}}' $(1) 2>/dev/null)
+endef
+
 ## Location to install dependencies to
 LOCALBIN ?= $(CURRENT_DIR)/bin
 $(LOCALBIN):
 	mkdir -p $(LOCALBIN)
 
 ## Tool Binaries
-CONTROLLER_GEN ?= $(LOCALBIN)/controller-gen
-ENVTEST ?= $(LOCALBIN)/setup-envtest
-GOLANGCI_LINT = $(LOCALBIN)/golangci-lint
-KO = $(LOCALBIN)/ko
-GOTESTSUM = $(LOCALBIN)/gotestsum
-CHAINSAW = $(LOCALBIN)/chainsaw
+CONTROLLER_GEN ?= $(LOCALBIN)/controller-gen-$(CONTROLLER_TOOLS_VERSION)
+ENVTEST ?= $(LOCALBIN)/setup-envtest-$(ENVTEST_VERSION)
+GOLANGCI_LINT = $(LOCALBIN)/golangci-lint-$(GOLANGCI_LINT_VERSION)
+KO = $(LOCALBIN)/ko-$(KO_VERSION)
+GOTESTSUM = $(LOCALBIN)/gotestsum-$(GOTESTSUM_VERSION)
+CHAINSAW = $(LOCALBIN)/chainsaw-$(CHAINSAW_VERSION)
 
 ## Tool Versions
 
 # renovate: datasource=github-releases depName=kubernetes-sigs/controller-tools
-CONTROLLER_TOOLS_VERSION ?= v0.18.0
-ENVTEST_VERSION ?= release-0.20
+CONTROLLER_TOOLS_VERSION ?= v0.21.0
+#ENVTEST_VERSION is the controller-runtime version to use for setup-envtest, derived from go.mod
+ENVTEST_VERSION ?= $(shell v='$(call gomodver,sigs.k8s.io/controller-runtime)'; \
+	[ -n "$$v" ] || { echo "Set ENVTEST_VERSION manually (controller-runtime replace has no tag)" >&2; exit 1; }; \
+	printf '%s\n' "$$v")
+
+#ENVTEST_K8S_VERSION is the version of Kubernetes to use for setting up ENVTEST binaries (i.e. 1.31)
+ENVTEST_K8S_VERSION ?= $(shell v='$(call gomodver,k8s.io/api)'; \
+	[ -n "$$v" ] || { echo "Set ENVTEST_K8S_VERSION manually (k8s.io/api replace has no tag)" >&2; exit 1; }; \
+	printf '%s\n' "$$v" | sed -E 's/^v?[0-9]+\.([0-9]+).*/1.\1/')
 # renovate: datasource=github-releases depName=golangci/golangci-lint
 GOLANGCI_LINT_VERSION ?= v2.12.2
 # renovate: datasource=github-releases depName=ko-build/ko
 KO_VERSION ?= v0.18.0
 # renovate: datasource=github-releases depName=gotestyourself/gotestsum
 GOTESTSUM_VERSION ?= v1.13.0
-# renovate: datasource=go depName=github.com/kubernetes/code-generator
-CODE_GENERATOR_VERSION ?= v0.33.1
 # renovate: datasource=go depName=github.com/kyverno/chainsaw
 CHAINSAW_VERSION ?= v0.2.15
 
@@ -123,10 +133,19 @@ controller-gen: $(CONTROLLER_GEN) ## Download controller-gen locally if necessar
 $(CONTROLLER_GEN): $(LOCALBIN)
 	$(call go-install-tool,$(CONTROLLER_GEN),sigs.k8s.io/controller-tools/cmd/controller-gen,$(CONTROLLER_TOOLS_VERSION))
 
+.PHONY: setup-envtest
+setup-envtest: envtest ## Download the binaries required for ENVTEST in the local bin directory.
+	@echo "Setting up envtest binaries for Kubernetes version $(ENVTEST_K8S_VERSION)..."
+	@"$(ENVTEST)" use $(ENVTEST_K8S_VERSION) --bin-dir "$(LOCALBIN)" -p path || { \
+		echo "Error: Failed to set up envtest binaries for version $(ENVTEST_K8S_VERSION)."; \
+		exit 1; \
+	}
+
 .PHONY: envtest
 envtest: $(ENVTEST) ## Download setup-envtest locally if necessary.
 $(ENVTEST): $(LOCALBIN)
 	$(call go-install-tool,$(ENVTEST),sigs.k8s.io/controller-runtime/tools/setup-envtest,$(ENVTEST_VERSION))
+
 
 .PHONY: golangci-lint
 golangci-lint: $(GOLANGCI_LINT) ## Download golangci-lint locally if necessary.
@@ -148,18 +167,17 @@ gotestsum: $(GOTESTSUM)
 $(GOTESTSUM): $(LOCALBIN)
 	$(call go-install-tool,$(GOTESTSUM),gotest.tools/gotestsum,$(GOTESTSUM_VERSION))
 
-# go-install-tool will 'go install' any package with custom target and name of binary, if it doesn't exist
-# $1 - target path with name of binary
+# go-install-tool will 'go install' any package with custom target and name of binary.
+# The binary is installed to the versioned target path, so bumping the tool version
+# (e.g. CONTROLLER_TOOLS_VERSION) causes make to install the new version.
+# $1 - target path with name of binary (including the version)
 # $2 - package url which can be installed
 # $3 - specific version of package
 define go-install-tool
-@[ -f "$(1)-$(3)" ] || { \
-set -e; \
+@set -e; \
 package=$(2)@$(3) ;\
 echo "Downloading $${package}" ;\
-rm -f $(1) || true ;\
-GOBIN=$(LOCALBIN) go install $${package} ;\
-mv $(1) $(1)-$(3) ;\
-} ;\
-ln -sf $(1)-$(3) $(1)
+rm -f "$(1)" "$(LOCALBIN)/$$(basename "$(2)")" ;\
+GOBIN="$(LOCALBIN)" go install $${package} ;\
+mv "$(LOCALBIN)/$$(basename "$(2)")" "$(1)"
 endef

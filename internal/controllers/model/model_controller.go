@@ -27,8 +27,8 @@ import (
 	"strings"
 	"time"
 
-	xpv1 "github.com/crossplane/crossplane-runtime/apis/common/v1"
-	"github.com/crossplane/crossplane-runtime/pkg/errors"
+	"github.com/crossplane/crossplane-runtime/v2/pkg/errors"
+	xpv2 "github.com/crossplane/crossplane/apis/v2/core/v2"
 	"github.com/go-logr/logr"
 	ollamaapi "github.com/ollama/ollama/api"
 	"go.opentelemetry.io/otel/attribute"
@@ -74,8 +74,8 @@ type Reconciler struct {
 	timeNowFn            func() time.Time
 }
 
-func (r *Reconciler) apply(ctx context.Context, obj *unstructured.Unstructured, opts ...client.PatchOption) error {
-	return r.client.Patch(ctx, obj, client.Apply, append(opts, client.ForceOwnership)...)
+func (r *Reconciler) apply(ctx context.Context, obj *unstructured.Unstructured, opts ...client.ApplyOption) error {
+	return r.client.Apply(ctx, client.ApplyConfigurationFromUnstructured(obj), append(opts, client.ForceOwnership)...)
 }
 
 func (r *Reconciler) eventRecorderFor(obj runtime.Object) *eventrecorder.EventRecorder {
@@ -87,10 +87,10 @@ func (r *Reconciler) Reconcile(ctx context.Context, model *ollamav1alpha1.Model)
 		model.Status.ObservedGeneration = model.GetGeneration()
 		model.Status.OllamaImage = cmp.Or(model.Spec.OllamaImage, defaults.OllamaImage)
 		if retErr != nil {
-			model.SetConditionsWithObservedGeneration(xpv1.ReconcileError(retErr))
-			model.SetConditionsWithObservedGeneration(xpv1.Unavailable()) // if the reconcile failed we can't say anything about the Model's status
+			model.SetConditionsWithObservedGeneration(xpv2.ReconcileError(retErr))
+			model.SetConditionsWithObservedGeneration(xpv2.Unavailable()) // if the reconcile failed we can't say anything about the Model's status
 		} else {
-			model.SetConditionsWithObservedGeneration(xpv1.ReconcileSuccess())
+			model.SetConditionsWithObservedGeneration(xpv2.ReconcileSuccess())
 		}
 
 		patchErr := r.client.Status().Update(ctx, model)
@@ -123,7 +123,7 @@ func (r *Reconciler) Reconcile(ctx context.Context, model *ollamav1alpha1.Model)
 		Name:      model.GetName(),
 	}, sts); err != nil {
 		if apierrors.IsNotFound(err) {
-			model.SetConditionsWithObservedGeneration(xpv1.Creating())
+			model.SetConditionsWithObservedGeneration(xpv2.Creating())
 			return ctrl.Result{}, nil
 		}
 		return ctrl.Result{}, errors.Wrap(err, "failed to fetch statefulset to check its readiness")
@@ -131,11 +131,11 @@ func (r *Reconciler) Reconcile(ctx context.Context, model *ollamav1alpha1.Model)
 
 	readyMsg, ready, err := isStatefulSetReady(sts)
 	if err != nil {
-		model.SetConditionsWithObservedGeneration(xpv1.Unavailable())
+		model.SetConditionsWithObservedGeneration(xpv2.Unavailable())
 		return ctrl.Result{}, err
 	}
 	if !ready {
-		model.SetConditionsWithObservedGeneration(xpv1.Unavailable().WithMessage(readyMsg))
+		model.SetConditionsWithObservedGeneration(xpv2.Unavailable().WithMessage(readyMsg))
 		return ctrl.Result{}, nil
 	}
 
@@ -146,8 +146,8 @@ func (r *Reconciler) Reconcile(ctx context.Context, model *ollamav1alpha1.Model)
 
 	if !slices.ContainsFunc(modelList.Models, func(resp ollamaapi.ListModelResponse) bool { return resp.Model == model.Spec.Model }) {
 		// model has NOT been pulled in yet
-		pullingModelCondition := xpv1.Creating().WithMessage(fmt.Sprintf("Pulling %q model", model.Spec.Model))
-		cond := model.GetCondition(xpv1.TypeReady)
+		pullingModelCondition := xpv2.Creating().WithMessage(fmt.Sprintf("Pulling %q model", model.Spec.Model))
+		cond := model.GetCondition(xpv2.TypeReady)
 		if !cond.Equal(pullingModelCondition) {
 			// pulling takes a while and we want to inform the user that it's happening
 			model.SetConditionsWithObservedGeneration(pullingModelCondition)
@@ -181,14 +181,14 @@ func (r *Reconciler) Reconcile(ctx context.Context, model *ollamav1alpha1.Model)
 		}
 		log.V(1).Info("pulled model", "response", pullResp)
 		if pullResp.Status != "success" {
-			model.SetConditionsWithObservedGeneration(xpv1.Unavailable().WithMessage("Model hasn't been pulled successfully, retrying"))
+			model.SetConditionsWithObservedGeneration(xpv2.Unavailable().WithMessage("Model hasn't been pulled successfully, retrying"))
 			return ctrl.Result{RequeueAfter: 5 * time.Second}, nil
 		}
 	}
 
 	modelDetails, err := ollamaCli.Show(ctx, &ollamaapi.ShowRequest{Model: model.Spec.Model})
 	if err != nil {
-		model.SetConditionsWithObservedGeneration(xpv1.Unavailable())
+		model.SetConditionsWithObservedGeneration(xpv2.Unavailable())
 		return ctrl.Result{}, errors.Wrap(err, "while fetching ollama model details")
 	}
 	model.Status.OllamaModelDetails = &ollamav1alpha1.OllamaModelDetails{
@@ -200,7 +200,7 @@ func (r *Reconciler) Reconcile(ctx context.Context, model *ollamav1alpha1.Model)
 		Families:          modelDetails.Details.Families,
 	}
 
-	model.SetConditionsWithObservedGeneration(xpv1.Available())
+	model.SetConditionsWithObservedGeneration(xpv2.Available())
 	return ctrl.Result{}, nil
 }
 
@@ -210,10 +210,10 @@ func (r *Reconciler) patchModelStatusOnPullingProgress(ctx context.Context, mode
 			WithStatus(applyollamav1alpha1.ModelStatus().
 				WithObservedGeneration(model.GetGeneration()).
 				WithConditions(
-					xpv1.Creating().
+					xpv2.Creating().
 						WithObservedGeneration(model.GetGeneration()).
 						WithMessage(msg),
-					xpv1.ReconcileSuccess().
+					xpv2.ReconcileSuccess().
 						WithObservedGeneration(model.GetGeneration()),
 				),
 			),
