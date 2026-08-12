@@ -121,8 +121,6 @@ GOLANGCI_LINT_VERSION ?= v2.12.2
 KO_VERSION ?= v0.18.0
 # renovate: datasource=github-releases depName=gotestyourself/gotestsum
 GOTESTSUM_VERSION ?= v1.13.0
-# renovate: datasource=go depName=github.com/kubernetes/code-generator
-CODE_GENERATOR_VERSION ?= v0.33.1
 # renovate: datasource=go depName=github.com/kyverno/chainsaw
 CHAINSAW_VERSION ?= v0.2.15
 
