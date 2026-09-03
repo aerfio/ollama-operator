@@ -13,7 +13,7 @@ require (
 	github.com/go-logr/logr v1.4.4
 	github.com/google/go-cmp v0.7.0
 	github.com/hashicorp/go-cleanhttp v0.5.2
-	github.com/klauspost/compress v1.19.2
+	github.com/klauspost/compress v1.20.0
 	github.com/ollama/ollama v0.33.2
 	github.com/spf13/pflag v1.0.10
 	github.com/stretchr/testify v1.12.1
