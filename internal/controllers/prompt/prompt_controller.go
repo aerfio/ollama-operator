@@ -10,6 +10,7 @@ import (
 	"io"
 	"net/http"
 	"strings"
+	"time"
 
 	"github.com/crossplane/crossplane-runtime/v2/pkg/errors"
 	xpv2 "github.com/crossplane/crossplane/apis/v2/core/v2"
@@ -135,7 +136,7 @@ func (r *Reconciler) Reconcile(ctx context.Context, prompt *ollamav1alpha1.Promp
 	waitingForResponseCond := xpv2.Creating().WithMessage("Waiting for model response")
 	if !prompt.Status.GetCondition(xpv2.TypeReady).Equal(waitingForResponseCond) {
 		prompt.SetConditionsWithObservedGeneration(waitingForResponseCond)
-		return reconcile.Result{Requeue: true}, nil
+		return reconcile.Result{RequeueAfter: 3 * time.Second}, nil
 	}
 
 	ollamaCli := r.ollamaClientProvider.ForModel(referencedModel)

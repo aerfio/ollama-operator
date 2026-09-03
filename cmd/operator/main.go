@@ -254,7 +254,8 @@ func mainErr() error {
 		restCfg,
 		restConfigQPS,
 		restConfigBurst,
-		"ollama-operator")
+		"ollama-operator",
+	)
 
 	containsImageSelector := labels.SelectorFromSet(map[string]string{"ollama.aerf.io/contains-image": "true"})
 	cacheOpts := cache.Options{

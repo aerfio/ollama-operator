@@ -145,7 +145,10 @@ formatters:
           replacement: a[b:]
     gofumpt:
       module-path: aerf.io/ollama-operator
-      extra-rules: true
+      extra:
+        group-params: true
+        clothe-returns: true
+        balance-calls: true
   exclusions:
     generated: lax
     paths:
