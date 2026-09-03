@@ -151,7 +151,7 @@ func (r *Reconciler) Reconcile(ctx context.Context, model *ollamav1alpha1.Model)
 		if !cond.Equal(pullingModelCondition) {
 			// pulling takes a while and we want to inform the user that it's happening
 			model.SetConditionsWithObservedGeneration(pullingModelCondition)
-			return ctrl.Result{Requeue: true}, nil
+			return ctrl.Result{RequeueAfter: 3 * time.Second}, nil
 		}
 
 		log.V(1).Info("started pulling ollama model")
@@ -290,7 +290,8 @@ func Resources(model *ollamav1alpha1.Model) ([]*unstructured.Unstructured, error
 	sts := applyappsv1.StatefulSet(model.GetName(), model.GetNamespace()).
 		WithLabels(labels).
 		WithOwnerReferences(
-			applyconfig.ControllerReferenceFrom(model)).
+			applyconfig.ControllerReferenceFrom(model),
+		).
 		WithSpec(
 			applyappsv1.StatefulSetSpec().
 				WithSelector(applymetav1.LabelSelector().WithMatchLabels(labels)).
