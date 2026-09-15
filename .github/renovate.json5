@@ -66,8 +66,8 @@
       "enabled": false,
       "matchManagers": ["gomod"],
       "matchDepTypes": ["direct"],
-      "matchDepNames": [
-        "sigs.k8s.io/structured-merge-diff/v4", // bumped by k8s.io/apimachinery
+      "matchPackagePrefixes": [
+        "sigs.k8s.io/structured-merge-diff", // bumped by k8s.io/apimachinery
       ]
     }
   ],
