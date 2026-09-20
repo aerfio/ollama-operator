@@ -65,7 +65,7 @@
       // ignore selected deps - they should be bumped by bump of other dep
       "enabled": false,
       "matchManagers": ["gomod"],
-      "matchDepTypes": ["direct"],
+      "matchDepTypes": ["require"],
       "matchPackagePrefixes": [
         "sigs.k8s.io/structured-merge-diff", // bumped by k8s.io/apimachinery
       ]
