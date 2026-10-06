@@ -1,5 +1,5 @@
-aerf.io/k8sutils v0.0.0-20260915073840-f3138b42febf h1:RjMgJ1pzmddM4dLUtpRHMcvYm+lN2P13GibPkNk9OzE=
-aerf.io/k8sutils v0.0.0-20260915073840-f3138b42febf/go.mod h1:BtFOgu8VFCJ76caZ6Rt1d+pO6Jd57J3+/fC4ZwSzsh8=
+aerf.io/k8sutils v0.0.0-20261006190731-c8331c0e0649 h1:ORsy/GLYV8E0wcei04N5NUxZSEdaEuKePOOHTXZgSOs=
+aerf.io/k8sutils v0.0.0-20261006190731-c8331c0e0649/go.mod h1:LVC2X+oP7M4cy+q/U5qU5+ki27gHqWzh8nxPpBLHh70=
 cel.dev/expr v0.25.2 h1:K6j46C81hXtZQfuX60cVWQFBJahKSE2gfRbNuvr5bFs=
 cel.dev/expr v0.25.2/go.mod h1:hrXvqGP6G6gyx8UAHSHJ5RGk//1Oj5nXQ2NI02Nrsg4=
 dario.cat/mergo v1.0.2 h1:85+piFYR1tMbRrLcDwR18y4UKJ3aH1Tbzi24VRW1TK8=
