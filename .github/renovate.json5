@@ -7,6 +7,12 @@
   "dependencyDashboard": false,
   "prConcurrentLimit": 5,
   "prHourlyLimit": 5,
+  // Keep dependency updates moving without manual intervention. GitHub merges
+  // each PR after required checks pass, and Renovate refreshes stale branches.
+  "automerge": true,
+  "automergeType": "pr",
+  "platformAutomerge": true,
+  "rebaseWhen": "behind-base-branch",
   // We don't want to separate major and minor upgrades in separate PRs since
   // we can upgrade them together in a single PR.
   "separateMajorMinor": false,
